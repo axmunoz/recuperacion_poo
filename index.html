@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recuperación POO · C++</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/*
+VOICE: hoja oficial de examen, seca y ordenada.
+IDEA: un formato impreso de evaluación con casillas y reglas negras.
+PICTURE: el editor y la ficha de la clase son la imagen.
+COLOUR and TYPE: piedra, negro, ladrillo y paneles blancos, colores planos; Schibsted Grotesk e IBM Plex Mono.
+LAYOUT: cabecera con regla gruesa, enunciado a la izquierda como formulario, editor a la derecha.
+*/
+:root{--piedra:#e7e4df;--negro:#151515;--ladrillo:#c8371e;--blanco:#fff;--gris:#6b6862;--linea:#cfcac2;--ok:#1d7a46;--okc:#e3f1e8;--errc:#f8e3df;--warnc:#f6ecd6;color-scheme:light}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:var(--piedra);color:var(--negro);font:15px/1.55 "Schibsted Grotesk",system-ui,sans-serif;overflow-x:clip}
+body.activo{-webkit-user-select:none;user-select:none}
+body.activo .CodeMirror,body.activo textarea{-webkit-user-select:text;user-select:text}
+h1,h2,h3{margin:0;line-height:1.1}
+button{font:inherit;font-weight:700;cursor:pointer;border:2px solid var(--negro);border-radius:0;padding:9px 16px;min-height:42px;background:var(--blanco);color:var(--negro)}
+button:hover:not(:disabled){background:var(--negro);color:var(--blanco)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--ladrillo);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.b-neg{background:var(--negro);color:var(--blanco)}.b-neg:hover:not(:disabled){background:var(--ladrillo);border-color:var(--ladrillo)}
+.b-lad{background:var(--ladrillo);border-color:var(--ladrillo);color:var(--blanco)}.b-lad:hover:not(:disabled){background:var(--negro);border-color:var(--negro)}
+.b-link{border:0;background:none;text-decoration:underline;padding:4px 0;min-height:auto;font-weight:500;color:var(--gris)}.b-link:hover{background:none;color:var(--negro)}
+.oculto{display:none!important}
+.mono,pre,code{font-family:"IBM Plex Mono",Consolas,monospace}
+input[type=text],input[type=password]{width:100%;font:16px "Schibsted Grotesk",sans-serif;padding:11px 12px;border:2px solid var(--negro);border-radius:0;background:var(--blanco);min-height:46px}
+label{display:block;font-weight:700;font-size:13px;margin-bottom:5px;text-transform:none}
+.nota{font-size:13px;color:var(--gris)}
+.aviso{padding:11px 13px;font-size:14px;border-left:4px solid var(--negro);background:var(--blanco)}
+.aviso.err{background:var(--errc);border-color:var(--ladrillo)}.aviso.ok{background:var(--okc);border-color:var(--ok)}.aviso.warn{background:var(--warnc);border-color:#9a6b12}
+
+/* ---- cabecera ---- */
+.cab{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 24px;padding:18px max(3vw,16px) 12px;border-bottom:5px solid var(--negro)}
+.cab .inst{font-size:13px;font-weight:500;color:var(--gris)}
+.cab h1{font-size:clamp(26px,3.4vw,40px);font-weight:800;letter-spacing:-.02em}
+.cab .der{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dato{border:2px solid var(--negro);background:var(--blanco);padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.dato.alerta{background:var(--ladrillo);border-color:var(--ladrillo);color:var(--blanco)}
+
+/* ---- ingreso ---- */
+#ingreso{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:0;border-bottom:2px solid var(--negro)}
+.reg{padding:26px max(3vw,16px);border-right:2px solid var(--negro)}
+.reg h2,.form h2{font-size:22px;font-weight:800;margin-bottom:14px}
+.reg ol{margin:0;padding:0;list-style:none;counter-reset:r}
+.reg li{counter-increment:r;display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--linea);font-size:14.5px}
+.reg li::before{content:counter(r);font-weight:800;font-size:20px;color:var(--ladrillo)}
+.reg table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;background:var(--blanco);border:2px solid var(--negro)}
+.reg th,.reg td{padding:7px 10px;border-bottom:1px solid var(--linea);text-align:left}
+.reg td:last-child,.reg th:last-child{text-align:right;white-space:nowrap}
+.reg th{background:var(--negro);color:var(--blanco);font-size:13px}
+.form{padding:26px max(3vw,16px);display:flex;flex-direction:column;gap:14px;background:var(--blanco)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:500}
+.check input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--negro)}
+
+/* ---- examen ---- */
+.area{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);border-bottom:2px solid var(--negro)}
+.hoja{background:var(--blanco);border-right:2px solid var(--negro);padding:20px max(2.4vw,16px);max-height:calc(100vh - 120px);overflow:auto}
+.hoja .num{font-weight:800;color:var(--ladrillo);font-size:14px}
+.hoja h2{font-size:clamp(24px,2.6vw,32px);font-weight:800;letter-spacing:-.01em;margin:4px 0 6px}
+.temas{font-size:13px;color:var(--gris);margin-bottom:12px}
+.fila{display:grid;grid-template-columns:150px minmax(0,1fr);border-top:1px solid var(--linea);padding:10px 0;gap:12px}
+.fila>b{font-size:13px}
+.fila p{margin:0}
+.clase{margin:0;background:var(--piedra);border:2px solid var(--negro);padding:10px 12px;font-size:12.8px;line-height:1.55;white-space:pre-wrap}
+.formula{font:600 13.5px/1.6 "IBM Plex Mono",monospace;border-left:4px solid var(--ladrillo);padding:4px 0 4px 10px;white-space:pre-wrap}
+.par{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:10px;margin-top:4px}
+.caja{border:2px solid var(--negro)}
+.caja h4{margin:0;padding:4px 8px;font-size:12px;background:var(--negro);color:var(--blanco)}
+.caja pre{margin:0;padding:8px;font-size:12.8px;white-space:pre-wrap}
+.trabajo{padding:16px max(2vw,14px);display:flex;flex-direction:column;gap:12px}
+.editor{border:2px solid var(--negro);background:var(--blanco)}
+.editor .tit{display:flex;justify-content:space-between;padding:5px 10px;border-bottom:2px solid var(--negro);font:600 12.5px "IBM Plex Mono",monospace}
+.CodeMirror{height:min(52vh,520px);font:14px/1.5 "IBM Plex Mono",Consolas,monospace}
+.CodeMirror-gutters{background:var(--blanco);border-right:1px solid var(--linea)}
+.CodeMirror-linenumber{color:#a19c94}
+.cm-s-default .cm-keyword{color:#151515;font-weight:600}.cm-s-default .cm-type,.cm-s-default .cm-variable-3{color:#1a5c8a}
+.cm-s-default .cm-string{color:#c8371e}.cm-s-default .cm-comment{color:#8a857d;font-style:italic}.cm-s-default .cm-meta{color:#6b4ea0}.cm-s-default .cm-number{color:#1d7a46}
+textarea.respaldo{width:100%;height:min(52vh,520px);border:0;padding:10px;font:14px/1.5 "IBM Plex Mono",monospace;resize:vertical;tab-size:4}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ctrl .nota{margin-left:auto}
+.io{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);gap:12px}
+.io textarea{width:100%;min-height:130px;border:2px solid var(--negro);border-radius:0;padding:8px;font:13.5px/1.45 "IBM Plex Mono",monospace;resize:vertical;background:var(--blanco)}
+.consola{background:var(--negro);color:#ecebe8;min-height:130px;max-height:330px;overflow:auto;padding:8px 10px;font:13px/1.5 "IBM Plex Mono",monospace;white-space:pre-wrap}
+.consola .e{color:#ff9a86}.consola .o{color:#8fd9a8}.consola .i{color:#bdb8af}.consola .w{color:#f1c66b}
+.chequeo{list-style:none;margin:6px 0 0;padding:0}
+.chequeo li{padding:1px 0}
+
+/* ---- final ---- */
+#final{padding:28px max(3vw,16px);display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:24px;align-items:start}
+.calif{background:var(--blanco);border:2px solid var(--negro);padding:20px}
+.calif .grande{font-size:84px;font-weight:800;line-height:1;letter-spacing:-.03em}
+.calif .de{font-size:15px;color:var(--gris)}
+.detalle{background:var(--blanco);border:2px solid var(--negro)}
+.detalle table{width:100%;border-collapse:collapse;font-size:14px}
+.detalle th,.detalle td{padding:8px 12px;border-bottom:1px solid var(--linea);text-align:left}
+.detalle th{background:var(--negro);color:var(--blanco);font-size:13px}
+.detalle td.n{text-align:right;white-space:nowrap;font-weight:700}
+.prog{height:12px;border:2px solid var(--negro);background:var(--blanco)}.prog i{display:block;height:100%;width:0;background:var(--negro)}
+.fila-b{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---- capas ---- */
+.capa{position:fixed;inset:0;background:rgba(21,21,21,.82);display:grid;place-items:center;z-index:100;padding:18px}
+.ficha{background:var(--blanco);border:3px solid var(--negro);max-width:660px;width:100%;max-height:90vh;overflow:auto;padding:22px 24px;display:flex;flex-direction:column;gap:12px}
+.ficha h2{font-size:24px;font-weight:800;border-bottom:3px solid var(--negro);padding-bottom:8px}
+.lista{list-style:none;margin:0;padding:0}
+.lista li{padding:7px 0;border-top:1px solid var(--linea);font-size:14px}
+.lista li::before{content:"";display:inline-block;width:9px;height:9px;background:var(--ladrillo);margin-right:9px;vertical-align:1px}
+#velo{position:fixed;inset:0;background:var(--negro);color:var(--blanco);z-index:300;display:grid;place-items:center;text-align:center;padding:20px}
+#velo b{display:block;font-size:28px;margin-bottom:6px}
+.tabla-d{width:100%;border-collapse:collapse;font-size:13px}.tabla-d td,.tabla-d th{border-bottom:1px solid var(--linea);padding:6px 8px;text-align:left}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--negro);color:var(--blanco);padding:11px 16px;border-left:5px solid var(--ladrillo);z-index:400;font-size:14px;max-width:min(92vw,560px)}
+@media (max-width:980px){#ingreso,.area,#final{grid-template-columns:1fr}.reg,.hoja{border-right:0;border-bottom:2px solid var(--negro)}.hoja{max-height:none}.io{grid-template-columns:1fr}}
+@media (max-width:600px){.fila{grid-template-columns:1fr;gap:4px}.par{grid-template-columns:1fr}.cab .der{margin-left:0}}
+@media print{body{display:none!important}}
+</style>
+</head>
+<body>
+
+<header class="cab">
+  <div>
+    <div class="inst" id="txtCurso"></div>
+    <h1>Recuperación · Programación Orientada a Objetos</h1>
+  </div>
+  <div class="der" id="cabDatos"></div>
+</header>
+
+<!-- INGRESO -->
+<section id="ingreso">
+  <div class="reg">
+    <h2>Reglas de la recuperación</h2>
+    <ol>
+      <li><span>Le saldrá <b>un ejercicio al azar</b> de un banco de 20. Lo resuelve, lo compila y lo prueba aquí mismo.</span></li>
+      <li><span>Escriba el código <b>como usted programe</b>: puede usar cout, cin y getline como prefiera e imprimir mensajes para pedir datos. Se califica que su programa muestre los resultados correctos.</span></li>
+      <li><span>Use lo visto en el curso: clases, getters y setters, constructores con lista de inicialización, destructores, clases abstractas y métodos con retorno y void.</span></li>
+      <li><span>La recuperación es en <b>pantalla completa</b>. Salir de la ventana (otra pestaña, otro navegador o cualquier aplicación) queda registrado con la hora y descuenta nota. Al llegar a <b id="txtMax"></b> salidas se finaliza y se envía sola.</span></li>
+      <li><span><b>No se puede copiar, pegar ni tomar capturas de pantalla.</b> Cada intento se descuenta.</span></li>
+      <li><span>Al finalizar, el programa se prueba con el ejemplo y con 3 casos ocultos, se calcula la nota de 0 a 5 y se envía al correo de la docente.</span></li>
+    </ol>
+    <table id="tablaPen"></table>
+  </div>
+  <div class="form">
+    <h2>Datos del estudiante</h2>
+    <div><label for="inNombre">Nombre completo</label><input type="text" id="inNombre" autocomplete="off"></div>
+    <div><label for="inCodigo">Código estudiantil</label><input type="text" id="inCodigo" inputmode="numeric" autocomplete="off"></div>
+    <label class="check"><input type="checkbox" id="chkReglas"> <span>Leí las reglas y acepto que las salidas de la ventana, los intentos de copiar o pegar y las capturas se descuenten de mi nota y se informen a la docente.</span></label>
+    <div id="msgIngreso" class="aviso err oculto"></div>
+    <button class="b-neg" id="btnIniciar">Iniciar recuperación</button>
+    <p class="nota">El ejercicio se asigna según su código: es el mismo aunque recargue la página o cambie de computador. Necesita internet para compilar y enviar.</p>
+    <div><button class="b-link" id="btnDocente">Panel docente</button></div>
+  </div>
+</section>
+
+<!-- EXAMEN -->
+<section id="examen" class="oculto">
+  <div class="area">
+    <article class="hoja" id="hoja"></article>
+    <section class="trabajo">
+      <div class="editor"><div class="tit"><span>main.cpp</span><span>C++17 · g++</span></div><div id="editor"></div></div>
+      <div class="ctrl">
+        <button class="b-neg" id="btnEjecutar">Compilar y ejecutar</button>
+        <button id="btnProbar">Probar con el ejemplo</button>
+        <button class="b-lad" id="btnFinalizar">Finalizar y enviar</button>
+        <span class="nota" id="txtServicio"></span>
+      </div>
+      <div class="io">
+        <div><label for="entrada">Entrada (lo que escribe el usuario)</label><textarea id="entrada" spellcheck="false"></textarea></div>
+        <div><label>Consola</label><div class="consola" id="consola" aria-live="polite"></div></div>
+      </div>
+      <div class="fila-b"><button id="btnPdfEnun">Enunciado en PDF</button><button id="btnPdfEntrega">Mi entrega en PDF</button></div>
+    </section>
+  </div>
+</section>
+
+<!-- FINAL -->
+<section id="final" class="oculto">
+  <div class="calif">
+    <div class="nota" id="finTitulo">Recuperación finalizada</div>
+    <div id="finNota"><span class="grande">—</span></div>
+    <div class="de" id="finDe"></div>
+    <div id="finProg" class="oculto" style="margin-top:14px"><p class="nota" id="finProgTxt">Calificando…</p><div class="prog"><i id="finProgBar"></i></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="detalle"><table><thead><tr><th>Concepto</th><th style="text-align:right">Valor</th></tr></thead><tbody id="finTabla"></tbody></table></div>
+    <div id="finEstado" class="aviso oculto"></div>
+    <div class="fila-b"><button class="b-neg oculto" id="btnReenviar">Reintentar envío</button><button id="btnPdfFinal">Descargar mi entrega en PDF</button></div>
+    <p class="nota" id="finObs"></p>
+    <div><button class="b-link" id="btnNuevo">Nuevo estudiante en este equipo (docente)</button></div>
+  </div>
+</section>
+
+<div id="bloqueo" class="capa oculto"><div class="ficha"><h2>La recuperación ya está abierta</h2><p>Ya está abierta en otra pestaña o ventana de este navegador. Cierre esta pestaña y vuelva a la original.</p><p class="nota">El intento quedó registrado y se descuenta de la nota.</p></div></div>
+<div id="capaFS" class="capa oculto"><div class="ficha"><h2>Vuelva a pantalla completa</h2><p>Salió de la pantalla completa. Para seguir trabajando debe volver. Quedó registrado.</p><div><button class="b-neg" id="btnVolverFS">Volver a pantalla completa</button></div></div></div>
+<div id="modal" class="capa oculto" role="dialog" aria-modal="true"><div class="ficha"><h2 id="mTitulo"></h2><div id="mCuerpo"></div><div class="fila-b" id="mBotones"></div></div></div>
+<div id="velo" class="oculto"><div><b>Contenido oculto</b>La recuperación se oculta cuando la ventana pierde el foco. Vuelva a esta ventana para continuar.</div></div>
+<div id="toast" class="oculto"></div>
+
+<script>
+{
+/* =====================================================================
+   CONFIGURACIÓN — la docente puede editar solo este bloque
+   ===================================================================== */
+const CONFIG = {
+  correoDocente: "alexandra.bedoya@unillanos.edu.co",
+  curso: "Programación Orientada a Objetos en C++ · Universidad de los Llanos",
+  semilla: "POO-recuperacion-2026",   // cambie este texto para repartir los ejercicios de otra forma
+  pinDocente: "2026",
+  maxSalidas: 3,
+  mostrarNotaAlEstudiante: true,
+  penalizaciones: {
+    salida:   { valor: 0.5, texto: "Salir de la ventana (otra pestaña, navegador o aplicación)" },
+    captura:  { valor: 0.5, texto: "Intentar tomar una captura de pantalla" },
+    pestana:  { valor: 0.3, texto: "Intentar abrir la recuperación en otra pestaña" },
+    copiar:   { valor: 0.2, texto: "Intentar copiar, cortar o pegar" },
+    pantalla: { valor: 0.2, texto: "Salir de la pantalla completa" }
+  }
+};
+
+const EJERCICIOS = [{"id":1,"titulo":"Cuenta bancaria","temas":"constructor con lista de inicialización · getters · métodos void y bool · destructor","que":"Modele una cuenta bancaria. El programa lee el titular, el saldo inicial y una serie de operaciones. Cada depósito o retiro se hace llamando a los métodos del objeto, nunca modificando el saldo desde main. Al terminar main, el destructor debe imprimir el cierre de la cuenta.","clases":"class CuentaBancaria\n  privado: string titular; double saldo;\n  CuentaBancaria(string t, double s)   // use lista de inicialización\n  string getTitular()  ·  double getSaldo()\n  void depositar(double valor)    // solo si valor > 0; si no, imprime Valor invalido\n  bool retirar(double valor)      // true si 0 < valor <= saldo y descuenta; false si no\n  ~CuentaBancaria()               // imprime: Cuenta de TITULAR cerrada","entrada_fmt":"Línea 1: titular (una palabra). Línea 2: saldo inicial. Línea 3: N (cantidad de operaciones). Luego N líneas: D VALOR (depósito) o R VALOR (retiro).","salida_fmt":"Por cada depósito válido: Deposito de V. Saldo: S. Por cada retiro aceptado: Retiro de V. Saldo: S; si retirar devuelve false: Retiro rechazado. Al final: Saldo final de TITULAR: S. Todos los valores con 2 decimales. Después, el destructor imprime Cuenta de TITULAR cerrada.","explicacion":"Titular Laura, saldo 100000, 3 operaciones. D 50000: saldo 150000.00. R 200000: 200000 es mayor que 150000, retirar devuelve false: Retiro rechazado. R 30000: saldo 120000.00. Saldo final de Laura: 120000.00. Al terminar main se destruye el objeto: Cuenta de Laura cerrada.","formula":"","ejemplo":{"entrada":"Laura\n100000\n3\nD 50000\nR 200000\nR 30000","salida":["Deposito de 50000.00. Saldo: 150000.00","Retiro rechazado","Retiro de 30000.00. Saldo: 120000.00","Saldo final de Laura: 120000.00","Cuenta de Laura cerrada"]},"ocultos":[{"entrada":"Pedro\n0\n2\nR 1\nD -5","salida":["Retiro rechazado","Valor invalido","Saldo final de Pedro: 0.00","Cuenta de Pedro cerrada"]},{"entrada":"Ana\n2500.5\n4\nD 499.5\nR 3000\nR 1\nD 10","salida":["Deposito de 499.50. Saldo: 3000.00","Retiro de 3000.00. Saldo: 0.00","Retiro rechazado","Deposito de 10.00. Saldo: 10.00","Saldo final de Ana: 10.00","Cuenta de Ana cerrada"]},{"entrada":"Juan\n80000\n1\nR 80000","salida":["Retiro de 80000.00. Saldo: 0.00","Saldo final de Juan: 0.00","Cuenta de Juan cerrada"]}]},{"id":2,"titulo":"Notas de un estudiante","temas":"setters con validación · método con retorno double · método con retorno string","que":"Cree la clase Estudiante. Las notas solo se pueden asignar por medio de setters que validan el rango 0.0 a 5.0: si la nota no es válida, el setter imprime el aviso y guarda 0. La definitiva y el estado se obtienen con métodos que retornan su valor.","clases":"class Estudiante\n  privado: string nombre; double nota1, nota2, nota3;\n  Estudiante(string n)                  // lista de inicialización; notas en 0\n  void setNota1(double) · setNota2 · setNota3   // validan; si no es válida: Nota K invalida, se asigna 0\n  double definitiva()    // nota1*0.3 + nota2*0.3 + nota3*0.4\n  string estado()        // Excelente si >= 4.5, Aprobado si >= 3.0, Reprobado en otro caso","entrada_fmt":"Línea 1: nombre. Líneas 2, 3 y 4: las tres notas.","salida_fmt":"Los avisos de notas inválidas, en orden, y luego: Estudiante: NOMBRE / Definitiva: D (2 decimales) / Estado: ESTADO","explicacion":"Carlos con notas 4.0, 7.5 y 3.5. La nota 2 (7.5) no es válida: Nota 2 invalida, se asigna 0. Definitiva = 4.0 × 0.3 + 0 × 0.3 + 3.5 × 0.4 = 1.2 + 0 + 1.4 = 2.60. Estado: Reprobado.","formula":"definitiva = nota1 × 0.3 + nota2 × 0.3 + nota3 × 0.4","ejemplo":{"entrada":"Carlos\n4.0\n7.5\n3.5","salida":["Nota 2 invalida, se asigna 0","Estudiante: Carlos","Definitiva: 2.60","Estado: Reprobado"]},"ocultos":[{"entrada":"Maria\n5\n4.5\n4.5","salida":["Estudiante: Maria","Definitiva: 4.65","Estado: Excelente"]},{"entrada":"Luis\n-1\n6\n3","salida":["Nota 1 invalida, se asigna 0","Nota 2 invalida, se asigna 0","Estudiante: Luis","Definitiva: 1.20","Estado: Reprobado"]},{"entrada":"Sofia\n3\n3\n3","salida":["Estudiante: Sofia","Definitiva: 3.00","Estado: Aprobado"]}]},{"id":3,"titulo":"Rectángulo","temas":"constructor por defecto · setters con validación · getters · métodos con retorno double y bool","que":"Cree la clase Rectangulo con un constructor por defecto que deja base y altura en 1. En main lea los datos y asígnelos con los setters, que no aceptan valores menores o iguales a 0 (en ese caso imprimen un aviso y dejan el valor en 1). Luego muestre los cálculos llamando a los métodos.","clases":"class Rectangulo\n  privado: double base, altura;\n  Rectangulo()          // lista de inicialización: base(1), altura(1)\n  void setBase(double)  // si <= 0: Base invalida, se deja en 1\n  void setAltura(double)// si <= 0: Altura invalida, se deja en 1\n  double area() · double perimetro() · double diagonalCuadrada()\n  bool esCuadrado()","entrada_fmt":"Línea 1: base. Línea 2: altura.","salida_fmt":"Avisos (si hay) y luego: Area: A / Perimetro: P / Diagonal al cuadrado: D (2 decimales) / Es cuadrado o No es cuadrado","explicacion":"Base 4, altura 2.5. Área = 4 × 2.5 = 10.00. Perímetro = 2 × (4 + 2.5) = 13.00. Diagonal al cuadrado = 4² + 2.5² = 16 + 6.25 = 22.25. Base y altura son distintas: No es cuadrado.","formula":"área = base × altura\nperímetro = 2 × (base + altura)\ndiagonal² = base² + altura²","ejemplo":{"entrada":"4\n2.5","salida":["Area: 10.00","Perimetro: 13.00","Diagonal al cuadrado: 22.25","No es cuadrado"]},"ocultos":[{"entrada":"-3\n0","salida":["Base invalida, se deja en 1","Altura invalida, se deja en 1","Area: 1.00","Perimetro: 4.00","Diagonal al cuadrado: 2.00","Es cuadrado"]},{"entrada":"7\n7","salida":["Area: 49.00","Perimetro: 28.00","Diagonal al cuadrado: 98.00","Es cuadrado"]},{"entrada":"0.5\n12","salida":["Area: 6.00","Perimetro: 25.00","Diagonal al cuadrado: 144.25","No es cuadrado"]}]},{"id":4,"titulo":"Inventario de productos","temas":"constructor con parámetros y lista de inicialización · método void que modifica el objeto · destructor","que":"Para cada producto el programa crea un objeto dentro del ciclo, le aplica el descuento, muestra su valor y el objeto se destruye al terminar esa vuelta del ciclo (porque es una variable local del bloque). El constructor y el destructor imprimen mensajes, así que el orden de los mensajes muestra el ciclo de vida del objeto.","clases":"class Producto\n  privado: string nombre; double precio; int cantidad;\n  Producto(string n, double p, int c)   // lista de inicialización; imprime: Se crea NOMBRE\n  void aplicarDescuento(double porcentaje)   // solo si está entre 0 y 50; si no: Descuento no permitido\n  double valorTotal()                         // precio * cantidad\n  getters de nombre y precio\n  ~Producto()                                 // imprime: Se elimina NOMBRE","entrada_fmt":"Línea 1: N. Luego, por cada producto, 4 líneas: nombre, precio, cantidad y porcentaje de descuento.","salida_fmt":"Por cada producto: Se crea NOMBRE, (Descuento no permitido si aplica), NOMBRE: precio P, valor V y Se elimina NOMBRE. Al final: Valor total del inventario: T. Valores con 2 decimales.","explicacion":"Dos productos. Arroz 4000, 10 unidades, 10 %: precio = 4000 − 4000 × 10 / 100 = 3600.00; valor = 3600 × 10 = 36000.00. Aceite 12000, 3 unidades, 80 %: 80 no está entre 0 y 50, Descuento no permitido; valor = 36000.00. Total = 72000.00. Cada objeto imprime Se crea al construirse y Se elimina al final de su vuelta.","formula":"precio_con_descuento = precio − precio × porcentaje / 100\nvalor = precio × cantidad","ejemplo":{"entrada":"2\nArroz\n4000\n10\n10\nAceite\n12000\n3\n80","salida":["Se crea Arroz","Arroz: precio 3600.00, valor 36000.00","Se elimina Arroz","Se crea Aceite","Descuento no permitido","Aceite: precio 12000.00, valor 36000.00","Se elimina Aceite","Valor total del inventario: 72000.00"]},"ocultos":[{"entrada":"1\nLapiz\n1500\n0\n0","salida":["Se crea Lapiz","Lapiz: precio 1500.00, valor 0.00","Se elimina Lapiz","Valor total del inventario: 0.00"]},{"entrada":"3\nA\n100\n1\n50\nB\n200\n2\n25\nC\n300\n3\n-5","salida":["Se crea A","A: precio 50.00, valor 50.00","Se elimina A","Se crea B","B: precio 150.00, valor 300.00","Se elimina B","Se crea C","Descuento no permitido","C: precio 300.00, valor 900.00","Se elimina C","Valor total del inventario: 1250.00"]},{"entrada":"1\nPortatil\n2500000\n2\n12","salida":["Se crea Portatil","Portatil: precio 2200000.00, valor 4400000.00","Se elimina Portatil","Valor total del inventario: 4400000.00"]}]},{"id":5,"titulo":"Nómina con clase abstracta","temas":"clase abstracta con método virtual puro · herencia · constructores que llaman al de la clase base","que":"La clase Empleado es abstracta: no se pueden crear objetos de ella. Cada tipo de empleado calcula su salario a su manera. En main lea los empleados uno por uno, cree el objeto del tipo que corresponda (puede usar un puntero Empleado* y new / delete), muestre su salario y acumule la nómina.","clases":"class Empleado (abstracta)\n  protegido: string nombre;\n  Empleado(string n)\n  virtual double calcularSalario() = 0;\n  virtual string tipo() = 0;\n  virtual ~Empleado()\nclass EmpleadoFijo : public Empleado     // atributo salarioMensual; retorna ese valor\nclass EmpleadoPorHoras : public Empleado // atributos horas, valorHora","entrada_fmt":"Línea 1: N. Por cada empleado: una línea con F o H, luego el nombre y luego: si es F, el salario mensual; si es H, las horas trabajadas y el valor de la hora (cada dato en su línea).","salida_fmt":"Por cada empleado: NOMBRE (fijo): SALARIO o NOMBRE (por horas): SALARIO. Al final: Nomina total: T. Valores con 2 decimales.","explicacion":"Ana es F con 2000000: Ana (fijo): 2000000.00. Luis es H con 45 horas a 10000: las primeras 40 horas valen 40 × 10000 = 400000; las 5 extra valen 5 × 10000 × 1.5 = 75000; total 475000.00. Nómina = 2475000.00.","formula":"por horas: si horas <= 40, salario = horas × valorHora; si no, salario = 40 × valorHora + (horas − 40) × valorHora × 1.5","ejemplo":{"entrada":"2\nF\nAna\n2000000\nH\nLuis\n45\n10000","salida":["Ana (fijo): 2000000.00","Luis (por horas): 475000.00","Nomina total: 2475000.00"]},"ocultos":[{"entrada":"1\nH\nPedro\n40\n8500","salida":["Pedro (por horas): 340000.00","Nomina total: 340000.00"]},{"entrada":"3\nH\nA\n10\n12000\nF\nB\n1423500\nH\nC\n50.5\n9000","salida":["A (por horas): 120000.00","B (fijo): 1423500.00","C (por horas): 501750.00","Nomina total: 2045250.00"]},{"entrada":"1\nF\nSara\n0","salida":["Sara (fijo): 0.00","Nomina total: 0.00"]}]},{"id":6,"titulo":"Figuras geométricas","temas":"clase abstracta · métodos virtuales puros con retorno · polimorfismo","que":"La clase Figura es abstracta y obliga a sus hijas a calcular el área y a decir su nombre. Lea N figuras; para cada una cree el objeto de la clase correcta, muestre su área llamando a los métodos a través de la clase base y lleve la suma y la figura de mayor área (la primera si hay empate). Use π = 3.1416.","clases":"class Figura (abstracta)\n  virtual double area() = 0;\n  virtual string nombre() = 0;\n  virtual ~Figura()\nclass Circulo : public Figura      // radio\nclass Rectangulo : public Figura   // base, altura\nclass Triangulo : public Figura    // base, altura","entrada_fmt":"Línea 1: N. Por cada figura: una línea con C, R o T y luego sus medidas, una por línea (C: radio; R y T: base y altura).","salida_fmt":"Por cada figura: NOMBRE: area A. Al final: Area total: T y Figura mayor: NOMBRE. Áreas con 2 decimales.","explicacion":"C con radio 2: área = 3.1416 × 2 × 2 = 12.57. R de 3 × 5: área 15.00. T de base 6 y altura 4: 6 × 4 / 2 = 12.00. Total = 12.5664 + 15 + 12 = 39.57. Figura mayor: Rectangulo.","formula":"círculo: π × r²\nrectángulo: base × altura\ntriángulo: base × altura / 2","ejemplo":{"entrada":"3\nC\n2\nR\n3\n5\nT\n6\n4","salida":["Circulo: area 12.57","Rectangulo: area 15.00","Triangulo: area 12.00","Area total: 39.57","Figura mayor: Rectangulo"]},"ocultos":[{"entrada":"1\nT\n10\n10","salida":["Triangulo: area 50.00","Area total: 50.00","Figura mayor: Triangulo"]},{"entrada":"2\nC\n1\nC\n3","salida":["Circulo: area 3.14","Circulo: area 28.27","Area total: 31.42","Figura mayor: Circulo"]},{"entrada":"4\nR\n2\n2\nT\n4\n2\nR\n1\n5\nC\n0.5","salida":["Rectangulo: area 4.00","Triangulo: area 4.00","Rectangulo: area 5.00","Circulo: area 0.79","Area total: 13.79","Figura mayor: Rectangulo"]}]},{"id":7,"titulo":"Conversor de temperatura","temas":"atributo privado · setter con validación · métodos con retorno double y string","que":"La clase Temperatura guarda solo los grados Celsius. Las demás escalas se calculan con métodos que retornan el valor. El setter no acepta temperaturas por debajo del cero absoluto (−273.15 °C). Use un solo objeto: en cada vuelta del ciclo asigne la nueva temperatura con el setter.","clases":"class Temperatura\n  privado: double celsius;\n  Temperatura()              // lista de inicialización: celsius(0)\n  void setCelsius(double c)  // si c < -273.15: imprime Temperatura no valida, se usa -273.15\n  double getCelsius() · double fahrenheit() · double kelvin()\n  string clasificar()        // Congelante (<= 0), Fria (< 15), Templada (< 25), Calida (>= 25)","entrada_fmt":"Línea 1: N. Luego N temperaturas en Celsius, una por línea.","salida_fmt":"Por cada temperatura: C C = F F = K K (CLASIFICACION), todos con 2 decimales. Si el valor no es válido, antes va el aviso Temperatura no valida, se usa -273.15.","explicacion":"Para 36.5: F = 36.5 × 9 / 5 + 32 = 97.70 y K = 36.5 + 273.15 = 309.65; como 36.5 ≥ 25 es Calida. Salida: 36.50 C = 97.70 F = 309.65 K (Calida).","formula":"F = C × 9 / 5 + 32\nK = C + 273.15","ejemplo":{"entrada":"3\n36.5\n-10\n20","salida":["36.50 C = 97.70 F = 309.65 K (Calida)","-10.00 C = 14.00 F = 263.15 K (Congelante)","20.00 C = 68.00 F = 293.15 K (Templada)"]},"ocultos":[{"entrada":"1\n-300","salida":["Temperatura no valida, se usa -273.15","-273.15 C = -459.67 F = 0.00 K (Congelante)"]},{"entrada":"2\n0\n15","salida":["0.00 C = 32.00 F = 273.15 K (Congelante)","15.00 C = 59.00 F = 288.15 K (Templada)"]},{"entrada":"2\n24.99\n100","salida":["24.99 C = 76.98 F = 298.14 K (Templada)","100.00 C = 212.00 F = 373.15 K (Calida)"]}]},{"id":8,"titulo":"Fracciones","temas":"constructor con validación · método void privado · métodos que retornan un objeto","que":"La clase Fraccion siempre se guarda simplificada y con el signo en el numerador. El constructor valida el denominador (si es 0 imprime un aviso y usa 1) y llama a un método simplificar() que divide numerador y denominador entre su máximo común divisor (algoritmo de Euclides con un ciclo). sumar y multiplicar retornan una nueva Fraccion.","clases":"class Fraccion\n  privado: int num, den; void simplificar();\n  Fraccion(int n, int d, string nombre)  // valida: Denominador de NOMBRE invalido, se usa 1\n  Fraccion sumar(Fraccion otra)          // a/b + c/d = (a·d + c·b) / (b·d)\n  Fraccion multiplicar(Fraccion otra)    // (a·c) / (b·d)\n  double decimal() · void mostrar()","entrada_fmt":"Cuatro enteros, uno por línea: numerador y denominador de F1, numerador y denominador de F2.","salida_fmt":"Avisos (si hay) y luego: F1 = a/b / F2 = c/d / Suma = x/y / Producto = p/q / F1 en decimal = D (4 decimales). Todas simplificadas, con el signo en el numerador.","explicacion":"F1 = 6/8 se simplifica dividiendo entre MCD(6, 8) = 2: 3/4. F2 = 1/6. Suma = (3 × 6 + 1 × 4) / (4 × 6) = 22/24 = 11/12. Producto = 3/24 = 1/8. F1 en decimal = 0.7500.","formula":"a/b + c/d = (a·d + c·b) / (b·d)\na/b × c/d = (a·c) / (b·d)","ejemplo":{"entrada":"6\n8\n1\n6","salida":["F1 = 3/4","F2 = 1/6","Suma = 11/12","Producto = 1/8","F1 en decimal = 0.7500"]},"ocultos":[{"entrada":"3\n0\n-2\n4","salida":["Denominador de F1 invalido, se usa 1","F1 = 3/1","F2 = -1/2","Suma = 5/2","Producto = -3/2","F1 en decimal = 3.0000"]},{"entrada":"5\n-10\n1\n2","salida":["F1 = -1/2","F2 = 1/2","Suma = 0/1","Producto = -1/4","F1 en decimal = -0.5000"]},{"entrada":"7\n3\n2\n9","salida":["F1 = 7/3","F2 = 2/9","Suma = 23/9","Producto = 14/27","F1 en decimal = 2.3333"]}]},{"id":9,"titulo":"Reloj digital","temas":"constructor que transforma datos · método void · método que retorna string con formato","que":"La clase Reloj guarda horas, minutos y segundos. Su constructor recibe una cantidad total de segundos y la convierte (si pasa de un día, se toma el residuo de dividir entre 86400). El método avanzar suma segundos y ajusta minutos, horas y días. El formato siempre usa dos dígitos por campo.","clases":"class Reloj\n  privado: int h, m, s;\n  Reloj(int totalSegundos)       // h = total / 3600, m = (total % 3600) / 60, s = total % 60\n  void avanzar(int segundos)     // al pasar de 23:59:59 vuelve a 00:00:00\n  string formato()               // HH:MM:SS con ceros a la izquierda\n  int totalSegundos()","entrada_fmt":"Línea 1: segundos iniciales. Línea 2: N. Luego N líneas con los segundos que avanza el reloj.","salida_fmt":"Hora inicial: HH:MM:SS, una línea +S s: HH:MM:SS por cada avance y al final Segundos desde medianoche: T","explicacion":"Inicial 3725: 3725 / 3600 = 1 hora; 3725 % 3600 = 125, que son 2 minutos y 5 segundos: 01:02:05. Avanzar 60: 01:03:05. Avanzar 82800 (23 horas): 24:03:05 se pasa del día, queda 00:03:05. Segundos desde medianoche: 185.","formula":"h = total / 3600\nm = (total % 3600) / 60\ns = total % 60","ejemplo":{"entrada":"3725\n2\n60\n82800","salida":["Hora inicial: 01:02:05","+60 s: 01:03:05","+82800 s: 00:03:05","Segundos desde medianoche: 185"]},"ocultos":[{"entrada":"0\n1\n59","salida":["Hora inicial: 00:00:00","+59 s: 00:00:59","Segundos desde medianoche: 59"]},{"entrada":"86399\n2\n1\n3600","salida":["Hora inicial: 23:59:59","+1 s: 00:00:00","+3600 s: 01:00:00","Segundos desde medianoche: 3600"]},{"entrada":"100000\n0","salida":["Hora inicial: 03:46:40","Segundos desde medianoche: 13600"]}]},{"id":10,"titulo":"Peaje con vehículos","temas":"clase abstracta · herencia con atributos propios · método virtual puro con retorno int","que":"Vehiculo es una clase abstracta con la placa y un método puro calcularPeaje(). Moto paga 6000; Carro paga 13500; Camion paga 15000 por cada eje y un recargo de 20000 si su peso supera 20 toneladas. Lea los vehículos uno por uno, cree el objeto correcto, muestre su cobro y acumule el recaudo.","clases":"class Vehiculo (abstracta)\n  protegido: string placa;\n  Vehiculo(string p)\n  virtual int calcularPeaje() = 0;  virtual string tipo() = 0;  virtual ~Vehiculo()\nclass Moto · class Carro : public Vehiculo\nclass Camion : public Vehiculo   // ejes (int), peso en toneladas (double)","entrada_fmt":"Línea 1: N. Por cada vehículo: M, C o K (camión) y la placa; si es K, también los ejes y el peso. Un dato por línea.","salida_fmt":"Por cada vehículo: TIPO PLACA: VALOR (Moto, Carro o Camion) y al final Recaudo total: T","explicacion":"Moto ABC12: 6000. Camión XYZ123 con 3 ejes y 25 toneladas: 15000 × 3 = 45000, más 20000 porque 25 > 20, total 65000. Recaudo = 71000.","formula":"camión: 15000 × ejes + (20000 si peso > 20)","ejemplo":{"entrada":"2\nM\nABC12\nK\nXYZ123\n3\n25","salida":["Moto ABC12: 6000","Camion XYZ123: 65000","Recaudo total: 71000"]},"ocultos":[{"entrada":"1\nC\nJKL456","salida":["Carro JKL456: 13500","Recaudo total: 13500"]},{"entrada":"3\nK\nAAA111\n2\n20\nC\nBBB222\nM\nCCC33","salida":["Camion AAA111: 30000","Carro BBB222: 13500","Moto CCC33: 6000","Recaudo total: 49500"]},{"entrada":"1\nK\nZZZ999\n6\n40.5","salida":["Camion ZZZ999: 110000","Recaudo total: 110000"]}]},{"id":11,"titulo":"Préstamo de un libro","temas":"estado interno con bool · métodos que retornan bool · getters","que":"La clase Libro controla si está disponible. prestar() y devolver() cambian el estado solo si la operación tiene sentido y retornan true o false; main usa ese valor para imprimir el mensaje. El libro también cuenta cuántas veces se ha prestado.","clases":"class Libro\n  privado: string titulo, autor; bool disponible; int vecesPrestado;\n  Libro(string t, string a)   // lista de inicialización: disponible(true), vecesPrestado(0)\n  bool prestar()      // false si ya está prestado\n  bool devolver()     // false si no estaba prestado\n  bool estaDisponible() · int getVecesPrestado() · getters de título y autor","entrada_fmt":"Línea 1: título (una palabra). Línea 2: autor (una palabra). Línea 3: N. Luego N líneas con P (prestar) o D (devolver).","salida_fmt":"Por cada operación: Prestamo realizado / El libro ya esta prestado / Devolucion registrada / El libro no estaba prestado. Al final: TITULO de AUTOR: disponible o prestado, y Veces prestado: K","explicacion":"Libro Cien de Garcia. P: estaba disponible, Prestamo realizado. P: ya está prestado, El libro ya esta prestado. D: Devolucion registrada. D: El libro no estaba prestado. P: Prestamo realizado. Final: Cien de Garcia: prestado y Veces prestado: 2.","formula":"","ejemplo":{"entrada":"Cien\nGarcia\n5\nP\nP\nD\nD\nP","salida":["Prestamo realizado","El libro ya esta prestado","Devolucion registrada","El libro no estaba prestado","Prestamo realizado","Cien de Garcia: prestado","Veces prestado: 2"]},"ocultos":[{"entrada":"Maria\nIsaacs\n1\nD","salida":["El libro no estaba prestado","Maria de Isaacs: disponible","Veces prestado: 0"]},{"entrada":"Rayuela\nCortazar\n4\nP\nD\nP\nD","salida":["Prestamo realizado","Devolucion registrada","Prestamo realizado","Devolucion registrada","Rayuela de Cortazar: disponible","Veces prestado: 2"]},{"entrada":"Ficciones\nBorges\n0","salida":["Ficciones de Borges: disponible","Veces prestado: 0"]}]},{"id":12,"titulo":"Triángulo con puntos","temas":"objetos como parámetros · métodos con retorno double · constructor con lista de inicialización","que":"Cree la clase Punto y úsela para construir un triángulo. El método distancia recibe otro punto y retorna la distancia (puede usar sqrt de <cmath>). Con los tres lados calcule el perímetro; con la fórmula del área por coordenadas decida si los puntos están alineados (área 0) y, si no, clasifique el triángulo por sus lados.","clases":"class Punto\n  privado: double x, y;\n  Punto(double x, double y)      // lista de inicialización\n  double getX() · double getY()\n  double distancia(Punto otro)   // raíz de (x1 − x2)² + (y1 − y2)²","entrada_fmt":"Seis números, uno por línea: x y y de A, de B y de C.","salida_fmt":"AB = d / BC = d / CA = d / Perimetro = p y luego Area = a y Tipo: Equilatero, Isosceles o Escaleno; si el área es 0: Los puntos estan alineados. Valores con 2 decimales.","explicacion":"A(0,0), B(4,0), C(0,3). AB = 4.00; BC = raíz de (4 − 0)² + (0 − 3)² = raíz de 25 = 5.00; CA = 3.00. Perímetro = 12.00. Área = |0(0 − 3) + 4(3 − 0) + 0(0 − 0)| / 2 = 12 / 2 = 6.00. Los tres lados son distintos: Escaleno.","formula":"distancia = √((x1 − x2)² + (y1 − y2)²)\nárea = |x1(y2 − y3) + x2(y3 − y1) + x3(y1 − y2)| / 2","ejemplo":{"entrada":"0\n0\n4\n0\n0\n3","salida":["AB = 4.00","BC = 5.00","CA = 3.00","Perimetro = 12.00","Area = 6.00","Tipo: Escaleno"]},"ocultos":[{"entrada":"0\n0\n2\n2\n4\n4","salida":["AB = 2.83","BC = 2.83","CA = 5.66","Perimetro = 11.31","Los puntos estan alineados"]},{"entrada":"1\n1\n4\n1\n1\n4","salida":["AB = 3.00","BC = 4.24","CA = 3.00","Perimetro = 10.24","Area = 4.50","Tipo: Isosceles"]},{"entrada":"-2\n0\n2\n0\n0\n5","salida":["AB = 4.00","BC = 5.39","CA = 5.39","Perimetro = 14.77","Area = 10.00","Tipo: Isosceles"]}]},{"id":13,"titulo":"Ciclo de vida de los objetos","temas":"constructor y destructor · alcance de las variables · orden de destrucción","que":"Demuestre en qué momento se crean y se destruyen los objetos. Cree la clase Rastreador cuyo constructor imprime Nace NOMBRE y cuyo destructor imprime Muere NOMBRE. En main lea cuatro nombres y siga exactamente este orden: cree el objeto 1; abra un bloque con llaves { } y dentro cree los objetos 2 y 3; cierre el bloque; cree el objeto 4; imprima Fin de main y termine main. Piense en qué orden se destruyen los objetos de un mismo bloque.","clases":"class Rastreador\n  privado: string nombre;\n  Rastreador(string n)   // lista de inicialización; imprime: Nace NOMBRE\n  ~Rastreador()          // imprime: Muere NOMBRE","entrada_fmt":"Cuatro nombres, uno por línea. Léalos todos al inicio de main, antes de crear los objetos.","salida_fmt":"Los mensajes Nace y Muere en el orden en que ocurren, y Fin de main en su lugar.","explicacion":"Nombres A, B, C y D. Nace A. Dentro del bloque: Nace B y Nace C; al cerrar la llave se destruyen en orden inverso a su creación: Muere C y luego Muere B. Fuera del bloque: Nace D. Se imprime Fin de main. Al terminar main se destruyen D y luego A: Muere D, Muere A.","formula":"","ejemplo":{"entrada":"A\nB\nC\nD","salida":["Nace A","Nace B","Nace C","Muere C","Muere B","Nace D","Fin de main","Muere D","Muere A"]},"ocultos":[{"entrada":"uno\ndos\ntres\ncuatro","salida":["Nace uno","Nace dos","Nace tres","Muere tres","Muere dos","Nace cuatro","Fin de main","Muere cuatro","Muere uno"]},{"entrada":"Sol\nLuna\nMarte\nVenus","salida":["Nace Sol","Nace Luna","Nace Marte","Muere Marte","Muere Luna","Nace Venus","Fin de main","Muere Venus","Muere Sol"]},{"entrada":"x\ny\nz\nw","salida":["Nace x","Nace y","Nace z","Muere z","Muere y","Nace w","Fin de main","Muere w","Muere x"]}]},{"id":14,"titulo":"Cafetera","temas":"constructor con valor por defecto · métodos void y bool · método con retorno double","que":"La cafetera tiene una capacidad máxima y una cantidad actual de café. Se crea vacía. Llenar la deja en su capacidad; servir una taza solo funciona si hay suficiente café (retorna true o false); vaciar la deja en 0. El objeto cuenta las tazas servidas y calcula qué porcentaje está lleno.","clases":"class Cafetera\n  privado: int capacidad, actual, tazas;\n  Cafetera(int capacidad = 1000)   // lista de inicialización: actual(0), tazas(0)\n  void llenar() · void vaciar()\n  bool servir(int ml)\n  double porcentaje()    // actual × 100 / capacidad\n  int getActual() · int getTazas()","entrada_fmt":"Línea 1: capacidad en ml. Línea 2: N. Luego N operaciones, una por línea: L (llenar), S ML (servir) o V (vaciar).","salida_fmt":"L: Llena: X ml. S: Sirve ML ml. Quedan X ml, o No alcanza para ML ml. Quedan X ml. V: Vaciada. Al final: Tazas servidas: T y Porcentaje lleno: P% (2 decimales).","explicacion":"Capacidad 1000. L: Llena: 1000 ml. S 300: Sirve 300 ml. Quedan 700 ml. S 800: 800 > 700, No alcanza para 800 ml. Quedan 700 ml. S 250: Quedan 450 ml. Tazas: 2. Porcentaje = 450 × 100 / 1000 = 45.00%.","formula":"porcentaje = actual × 100 / capacidad","ejemplo":{"entrada":"1000\n4\nL\nS 300\nS 800\nS 250","salida":["Llena: 1000 ml","Sirve 300 ml. Quedan 700 ml","No alcanza para 800 ml. Quedan 700 ml","Sirve 250 ml. Quedan 450 ml","Tazas servidas: 2","Porcentaje lleno: 45.00%"]},"ocultos":[{"entrada":"500\n1\nS 100","salida":["No alcanza para 100 ml. Quedan 0 ml","Tazas servidas: 0","Porcentaje lleno: 0.00%"]},{"entrada":"1200\n6\nL\nS 400\nV\nS 1\nL\nS 1200","salida":["Llena: 1200 ml","Sirve 400 ml. Quedan 800 ml","Vaciada","No alcanza para 1 ml. Quedan 0 ml","Llena: 1200 ml","Sirve 1200 ml. Quedan 0 ml","Tazas servidas: 2","Porcentaje lleno: 0.00%"]},{"entrada":"750\n3\nL\nS 250\nS 250","salida":["Llena: 750 ml","Sirve 250 ml. Quedan 500 ml","Sirve 250 ml. Quedan 250 ml","Tazas servidas: 2","Porcentaje lleno: 33.33%"]}]},{"id":15,"titulo":"Medios de pago","temas":"clase abstracta · herencia · método virtual puro con retorno double","que":"Un almacén recibe pagos por tres medios y cada uno calcula distinto el valor final. Pago es una clase abstracta con el monto. Efectivo tiene 5 % de descuento. Tarjeta tiene un recargo del 3 % y, si es a más de 1 cuota, además se multiplica por (1 + 0.015 × cuotas). Transferencia suma un costo fijo de 2500. Cree cada pago, muestre su valor final y sume el total.","clases":"class Pago (abstracta)\n  protegido: double monto;\n  Pago(double m)\n  virtual double valorFinal() = 0;  virtual string medio() = 0;  virtual ~Pago()\nclass Efectivo · class Transferencia : public Pago\nclass Tarjeta : public Pago     // cuotas (int)","entrada_fmt":"Línea 1: N. Por cada pago: E, T o B (transferencia) y el monto; si es T, también las cuotas. Un dato por línea.","salida_fmt":"Por cada pago: MEDIO: VALOR (Efectivo, Tarjeta o Transferencia) con 2 decimales. Al final: Total recaudado: T","explicacion":"E de 100000: 100000 × 0.95 = 95000.00. T de 200000 a 3 cuotas: 200000 × 1.03 = 206000 y luego × (1 + 0.015 × 3) = 206000 × 1.045 = 215270.00. B de 50000: 52500.00. Total = 362770.00.","formula":"efectivo: monto × 0.95\ntarjeta: monto × 1.03 × (1 + 0.015 × cuotas) si cuotas > 1\ntransferencia: monto + 2500","ejemplo":{"entrada":"3\nE\n100000\nT\n200000\n3\nB\n50000","salida":["Efectivo: 95000.00","Tarjeta: 215270.00","Transferencia: 52500.00","Total recaudado: 362770.00"]},"ocultos":[{"entrada":"1\nT\n80000\n1","salida":["Tarjeta: 82400.00","Total recaudado: 82400.00"]},{"entrada":"2\nB\n0\nE\n19990","salida":["Transferencia: 2500.00","Efectivo: 18990.50","Total recaudado: 21490.50"]},{"entrada":"2\nT\n1500000\n12\nE\n2000","salida":["Tarjeta: 1823100.00","Efectivo: 1900.00","Total recaudado: 1825000.00"]}]},{"id":16,"titulo":"Liquidación de matrícula","temas":"setters con validación · método con retorno · switch dentro de un método","que":"Liquide la matrícula de un estudiante. Cada crédito cuesta 185000. Según el estrato, el método descuento() usa un switch: estrato 1 tiene 70 %, 2 tiene 60 %, 3 tiene 40 %, 4 tiene 20 %, 5 y 6 no tienen descuento. Los créditos válidos van de 1 a 24; si no, el setter imprime un aviso y usa 12. Un estrato fuera de 1 a 6 imprime un aviso y no tiene descuento.","clases":"class Matricula\n  privado: string nombre; int creditos, estrato;\n  Matricula(string n)                        // lista de inicialización\n  void setCreditos(int) · void setEstrato(int)\n  double valorBase()     // creditos × 185000\n  int porcentajeDescuento()   // con switch\n  double totalAPagar()","entrada_fmt":"Línea 1: nombre. Línea 2: créditos. Línea 3: estrato.","salida_fmt":"Avisos (si hay) y luego: NOMBRE: C creditos / Valor base: X / Descuento (P%): X / Total a pagar: X (valores con 2 decimales).","explicacion":"Andrea, 16 créditos, estrato 2. Base = 16 × 185000 = 2960000.00. Estrato 2 da 60 %: descuento = 2960000 × 60 / 100 = 1776000.00. Total = 2960000 − 1776000 = 1184000.00.","formula":"valor base = créditos × 185000\ntotal = base − base × porcentaje / 100","ejemplo":{"entrada":"Andrea\n16\n2","salida":["Andrea: 16 creditos","Valor base: 2960000.00","Descuento (60%): 1776000.00","Total a pagar: 1184000.00"]},"ocultos":[{"entrada":"Jorge\n30\n5","salida":["Creditos fuera de rango, se usan 12","Jorge: 12 creditos","Valor base: 2220000.00","Descuento (0%): 0.00","Total a pagar: 2220000.00"]},{"entrada":"Lina\n8\n9","salida":["Estrato invalido, sin descuento","Lina: 8 creditos","Valor base: 1480000.00","Descuento (0%): 0.00","Total a pagar: 1480000.00"]},{"entrada":"Mateo\n1\n1","salida":["Mateo: 1 creditos","Valor base: 185000.00","Descuento (70%): 129500.00","Total a pagar: 55500.00"]}]},{"id":17,"titulo":"Personas y mayoría de edad","temas":"setter con validación · método bool · método void que imprime · método con retorno int","que":"Cree la clase Persona. La edad se asigna con un setter que solo acepta valores de 0 a 120. El método saludar() es void e imprime el saludo según sea mayor de edad (18 o más) o no; en ese caso usa aniosParaMayoria(), que retorna cuántos años le faltan. Lea N personas en un ciclo usando un solo objeto o uno por vuelta, como prefiera.","clases":"class Persona\n  privado: string nombre; int edad;\n  Persona(string n)          // lista de inicialización: edad(0)\n  void setEdad(int e)        // si no está entre 0 y 120: Edad invalida para NOMBRE, se usa 0\n  bool esMayorDeEdad() · int aniosParaMayoria() · int getEdad()\n  void saludar()","entrada_fmt":"Línea 1: N. Luego, por cada persona, dos líneas: nombre y edad.","salida_fmt":"Por cada persona: el aviso si aplica y su saludo: Hola, soy NOMBRE y soy mayor de edad / Hola, soy NOMBRE y me faltan K años para ser mayor de edad. Al final: Mayores de edad: M de N y Edad promedio: P (2 decimales).","explicacion":"Tres personas: Ana 25, Tomas 15 y Eva 130. Ana es mayor. A Tomas le faltan 18 − 15 = 3 años. Eva tiene una edad inválida: Edad invalida para Eva, se usa 0, y le faltan 18 años. Mayores: 1 de 3. Promedio = (25 + 15 + 0) / 3 = 13.33.","formula":"","ejemplo":{"entrada":"3\nAna\n25\nTomas\n15\nEva\n130","salida":["Hola, soy Ana y soy mayor de edad","Hola, soy Tomas y me faltan 3 años para ser mayor de edad","Edad invalida para Eva, se usa 0","Hola, soy Eva y me faltan 18 años para ser mayor de edad","Mayores de edad: 1 de 3","Edad promedio: 13.33"]},"ocultos":[{"entrada":"1\nLeo\n18","salida":["Hola, soy Leo y soy mayor de edad","Mayores de edad: 1 de 1","Edad promedio: 18.00"]},{"entrada":"2\nA\n-5\nB\n60","salida":["Edad invalida para A, se usa 0","Hola, soy A y me faltan 18 años para ser mayor de edad","Hola, soy B y soy mayor de edad","Mayores de edad: 1 de 2","Edad promedio: 30.00"]},{"entrada":"4\nP\n17\nQ\n18\nR\n19\nS\n1","salida":["Hola, soy P y me faltan 1 años para ser mayor de edad","Hola, soy Q y soy mayor de edad","Hola, soy R y soy mayor de edad","Hola, soy S y me faltan 17 años para ser mayor de edad","Mayores de edad: 2 de 4","Edad promedio: 13.75"]}]},{"id":18,"titulo":"Sonidos de animales","temas":"clase abstracta · destructor virtual · polimorfismo con punteros","que":"Animal es abstracta y tiene un destructor virtual que imprime un mensaje. Por cada animal leído cree el objeto con new usando un puntero Animal*, llame a hablar() (que imprime usando los métodos virtuales tipo() y sonido()) y libérelo con delete enseguida, para que se vea el mensaje del destructor. Cuente cuántos animales hay de cada clase.","clases":"class Animal (abstracta)\n  protegido: string nombre;\n  Animal(string n)\n  virtual string tipo() = 0;  virtual string sonido() = 0;\n  void hablar()          // imprime: NOMBRE (TIPO) dice SONIDO\n  virtual ~Animal()      // imprime: Se libera NOMBRE\nclass Perro (Guau) · class Gato (Miau) · class Vaca (Muu)","entrada_fmt":"Línea 1: N. Por cada animal, dos líneas: P, G o V y el nombre.","salida_fmt":"Por cada animal: NOMBRE (TIPO) dice SONIDO y luego Se libera NOMBRE. Al final: Perros: a, Gatos: b, Vacas: c","explicacion":"P Firulais: Firulais (Perro) dice Guau; al hacer delete: Se libera Firulais. G Michi: Michi (Gato) dice Miau; Se libera Michi. Perros: 1, Gatos: 1, Vacas: 0.","formula":"","ejemplo":{"entrada":"2\nP\nFirulais\nG\nMichi","salida":["Firulais (Perro) dice Guau","Se libera Firulais","Michi (Gato) dice Miau","Se libera Michi","Perros: 1, Gatos: 1, Vacas: 0"]},"ocultos":[{"entrada":"1\nV\nLola","salida":["Lola (Vaca) dice Muu","Se libera Lola","Perros: 0, Gatos: 0, Vacas: 1"]},{"entrada":"4\nG\nA\nG\nB\nV\nC\nP\nD","salida":["A (Gato) dice Miau","Se libera A","B (Gato) dice Miau","Se libera B","C (Vaca) dice Muu","Se libera C","D (Perro) dice Guau","Se libera D","Perros: 1, Gatos: 2, Vacas: 1"]},{"entrada":"3\nP\nRex\nP\nToby\nP\nMax","salida":["Rex (Perro) dice Guau","Se libera Rex","Toby (Perro) dice Guau","Se libera Toby","Max (Perro) dice Guau","Se libera Max","Perros: 3, Gatos: 0, Vacas: 0"]}]},{"id":19,"titulo":"Tiquete de parqueadero","temas":"constructor con varios parámetros · método privado auxiliar · método con retorno int","que":"Cada tiquete guarda la placa, el tipo (C carro o M moto) y las horas de entrada y salida en formato HH:MM. Un método privado convierte una hora HH:MM a minutos desde la medianoche. El cobro es por minuto: carro 120 y moto 60; los primeros 15 minutos o menos son gratis (si estuvo 15 minutos o menos no paga nada) y hay un tope diario: 30000 para carro y 15000 para moto. Si la salida es antes que la entrada, el tiquete es inválido.","clases":"class Tiquete\n  privado: string placa; char tipo; string entrada, salida;\n          int aMinutos(string hora);   // \"08:30\" da 510\n  Tiquete(string p, char t, string e, string s)   // lista de inicialización\n  int minutos() · int cobro() · bool valido()","entrada_fmt":"Línea 1: N. Por cada vehículo, 4 líneas: placa, tipo (C o M), hora de entrada y hora de salida (HH:MM).","salida_fmt":"Por cada vehículo: PLACA: M min, paga V o PLACA: hora invalida. Al final: Total del dia: T","explicacion":"ABC123, carro, 08:30 a 09:10. Entrada = 8 × 60 + 30 = 510; salida = 9 × 60 + 10 = 550; 40 minutos. Paga 40 × 120 = 4800. Total del dia: 4800.","formula":"minutos = (hs × 60 + ms) − (he × 60 + me)\ncobro = minutos × tarifa, con tope","ejemplo":{"entrada":"1\nABC123\nC\n08:30\n09:10","salida":["ABC123: 40 min, paga 4800","Total del dia: 4800"]},"ocultos":[{"entrada":"2\nXYZ12\nM\n10:00\n10:15\nKLM456\nC\n07:00\n18:00","salida":["XYZ12: 15 min, paga 0","KLM456: 660 min, paga 30000","Total del dia: 30000"]},{"entrada":"1\nQWE111\nC\n12:00\n11:59","salida":["QWE111: hora invalida","Total del dia: 0"]},{"entrada":"3\nM1\nM\n06:00\n12:00\nC1\nC\n06:00\n06:16\nC2\nC\n23:00\n23:59","salida":["M1: 360 min, paga 15000","C1: 16 min, paga 1920","C2: 59 min, paga 7080","Total del dia: 24000"]}]},{"id":20,"titulo":"Ecuación cuadrática","temas":"constructor con validación · métodos con retorno double y bool · método void","que":"La clase EcuacionCuadratica representa ax² + bx + c = 0. El constructor no acepta a = 0 (imprime un aviso y usa 1). Con el discriminante se decide cuántas raíces reales tiene. Si no tiene raíces reales, muestre el vértice de la parábola. Puede usar sqrt de <cmath>.","clases":"class EcuacionCuadratica\n  privado: double a, b, c;\n  EcuacionCuadratica(double a, double b, double c)   // valida a\n  double discriminante()        // b² − 4ac\n  bool tieneRaicesReales()\n  double raiz1() · double raiz2()   // con + y con − en la fórmula\n  void mostrarVertice()","entrada_fmt":"Tres números, uno por línea: a, b y c.","salida_fmt":"Aviso si a = 0. Luego Discriminante: D y, según el caso: Dos raices reales con x1 = … y x2 = … / Una raiz real doble con x = … / No tiene raices reales con Vertice: (h, k). Todo con 2 decimales.","explicacion":"a = 1, b = −3, c = 2. Discriminante = (−3)² − 4 × 1 × 2 = 9 − 8 = 1.00, es mayor que 0: Dos raices reales. x1 = (3 + 1) / 2 = 2.00 y x2 = (3 − 1) / 2 = 1.00.","formula":"D = b² − 4ac\nx = (−b ± √D) / (2a)\nvértice = (−b / (2a), c − b² / (4a))","ejemplo":{"entrada":"1\n-3\n2","salida":["Discriminante: 1.00","Dos raices reales","x1 = 2.00","x2 = 1.00"]},"ocultos":[{"entrada":"1\n2\n5","salida":["Discriminante: -16.00","No tiene raices reales","Vertice: (-1.00, 4.00)"]},{"entrada":"0\n4\n4","salida":["a no puede ser 0, se usa 1","Discriminante: 0.00","Una raiz real doble","x = -2.00"]},{"entrada":"2\n-4\n2","salida":["Discriminante: 0.00","Una raiz real doble","x = 1.00"]}]}];
+const PLANTILLA = `#include <iostream>
+#include <iomanip>
+#include <string>
+using namespace std;
+
+// Escriba aquí sus clases
+
+
+int main() {
+
+    return 0;
+}
+`;
+
+/* ===================== UTILIDADES ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ahora = () => new Date();
+const fechaTxt = d => new Date(d).toLocaleString("es-CO", { dateStyle:"short", timeStyle:"medium" });
+const dur = ms => { const s = Math.max(0, Math.floor(ms/1000)); return [Math.floor(s/3600), Math.floor(s%3600/60), s%60].map(n => String(n).padStart(2,"0")).join(":"); };
+const CLAVE = "recuperacionPOO.v1";
+let toastT;
+function toast(m, ms = 3500){ const t = $("toast"); t.textContent = m; t.classList.remove("oculto"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("oculto"), ms); }
+const limpiaCodigo = c => String(c).replace(/\D/g, "");
+function hash32(str){ let h = 2166136261; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; }
+const ejercicioDe = codigo => EJERCICIOS[hash32(CONFIG.semilla + "|" + limpiaCodigo(codigo)) % EJERCICIOS.length];
+
+/* ===================== ESTADO ===================== */
+let S = null;
+function cargar(){ try { return JSON.parse(localStorage.getItem(CLAVE)) || null; } catch(e){ return null; } }
+function guardar(){ try { localStorage.setItem(CLAVE, JSON.stringify(S)); pintarCab(); } catch(e){} }
+const EJ = () => EJERCICIOS.find(e => e.id === S.ejercicio);
+function descuento(){ return S ? S.incidentes.reduce((s, i) => s + (CONFIG.penalizaciones[i.clase]?.valor || 0), 0) : 0; }
+function registrar(clase, detalle){
+  if (!S || S.estado !== "activo") return;
+  S.incidentes.push({ clase, tipo:detalle || CONFIG.penalizaciones[clase]?.texto || clase, fecha:ahora().toISOString() });
+  if (clase === "salida") S.salidas++;
+  guardar();
+}
+let relojT;
+function pintarCab(){
+  if (!S){ $("cabDatos").innerHTML = ""; return; }
+  const d = descuento();
+  $("cabDatos").innerHTML = `<span class="dato">${esc(S.nombre)} · ${esc(S.codigo)}</span><span class="dato" id="datoTiempo">${dur((S.fin ? new Date(S.fin) : Date.now()) - new Date(S.inicio))}</span>`
+    + `<span class="dato ${S.salidas ? "alerta" : ""}">Salidas ${S.salidas} de ${CONFIG.maxSalidas}</span><span class="dato ${d ? "alerta" : ""}">Descuento −${d.toFixed(1)}</span>`;
+}
+
+/* ===================== UNA SOLA PESTAÑA ===================== */
+const canal = ("BroadcastChannel" in window) ? new BroadcastChannel("recuperacion-poo") : null;
+let principal = false;
+function comprobarPestana(){
+  return new Promise(res => {
+    if (!canal){ principal = true; return res(true); }
+    let ocupado = false; const h = ev => { if (ev.data && ev.data.t === "ocupado") ocupado = true; };
+    canal.addEventListener("message", h); canal.postMessage({ t:"hola" });
+    setTimeout(() => { canal.removeEventListener("message", h); principal = !ocupado; res(!ocupado); }, 450);
+  });
+}
+if (canal) canal.addEventListener("message", ev => { if (ev.data && ev.data.t === "hola" && principal){ canal.postMessage({ t:"ocupado" }); registrar("pestana"); toast("Se detectó un intento de abrir la recuperación en otra pestaña. Se descontó de la nota."); } });
+
+/* ===================== EDITOR ===================== */
+let cm = null, respaldo = null;
+function bloqueoCopia(t){ registrar("copiar", t); toast("Copiar, cortar y pegar están bloqueados. El intento se descontó de la nota."); }
+function crearEditor(){
+  if (window.CodeMirror){
+    cm = CodeMirror($("editor"), { value:S.codigo_fuente, mode:"text/x-c++src", lineNumbers:true, indentUnit:4, tabSize:4, matchBrackets:true, autoCloseBrackets:true, dragDrop:false, extraKeys:{ Tab: c => c.replaceSelection("    ") } });
+    cm.on("copy", (c, e) => { e.preventDefault(); bloqueoCopia("Intentó copiar código"); });
+    cm.on("cut", (c, e) => { e.preventDefault(); bloqueoCopia("Intentó cortar código"); });
+    cm.on("paste", (c, e) => { e.preventDefault(); bloqueoCopia("Intentó pegar en el editor"); });
+    cm.on("beforeChange", (c, ch) => { if (ch.origin === "paste" || ch.origin === "drop") ch.cancel(); });
+    cm.on("changes", alCambiar);
+  } else {
+    respaldo = document.createElement("textarea"); respaldo.className = "respaldo"; respaldo.spellcheck = false; respaldo.value = S.codigo_fuente; $("editor").appendChild(respaldo);
+    respaldo.addEventListener("keydown", e => { if (e.key === "Tab"){ e.preventDefault(); respaldo.setRangeText("    ", respaldo.selectionStart, respaldo.selectionEnd, "end"); alCambiar(); } });
+    respaldo.addEventListener("input", alCambiar);
+  }
+}
+const codigoActual = () => cm ? cm.getValue() : respaldo ? respaldo.value : S.codigo_fuente;
+let gT;
+function alCambiar(){ if (!S || S.estado !== "activo") return; S.codigo_fuente = codigoActual(); clearTimeout(gT); gT = setTimeout(guardar, 600); }
+["copy","cut","paste"].forEach(t => document.addEventListener(t, e => {
+  if (!S || S.estado !== "activo") return;
+  if (e.target.closest && e.target.closest(".CodeMirror")) return;
+  e.preventDefault(); bloqueoCopia(t === "paste" ? "Intentó pegar" : t === "cut" ? "Intentó cortar" : "Intentó copiar");
+}, true));
+["dragstart","drop"].forEach(t => document.addEventListener(t, e => { if (S && S.estado === "activo") e.preventDefault(); }, true));
+
+/* ===================== HOJA DEL EJERCICIO ===================== */
+function htmlHoja(e){
+  return `<div class="num">Ejercicio ${e.id} de 20</div><h2>${esc(e.titulo)}</h2><div class="temas">${esc(e.temas)}</div>
+    <div class="fila"><b>Qué debe hacer</b><p>${esc(e.que)}</p></div>
+    <div class="fila"><b>Clases que debe crear</b><pre class="clase">${esc(e.clases)}</pre></div>
+    ${e.formula ? `<div class="fila"><b>Fórmula</b><div class="formula">${esc(e.formula)}</div></div>` : ""}
+    <div class="fila"><b>Datos de entrada</b><p>${esc(e.entrada_fmt)}</p></div>
+    <div class="fila"><b>Resultados que debe mostrar</b><p>${esc(e.salida_fmt)}</p></div>
+    <div class="fila"><b>Ejemplo explicado</b><p>${esc(e.explicacion)}</p></div>
+    <div class="fila"><b>Ejemplo</b><div class="par">
+      <div class="caja"><h4>Entrada</h4><pre>${esc(e.ejemplo.entrada)}</pre></div>
+      <div class="caja"><h4>Resultados que deben aparecer en la consola</h4><pre>${esc(e.ejemplo.salida.join("\n"))}</pre></div></div></div>
+    <p class="nota">Puede imprimir mensajes adicionales (por ejemplo para pedir datos): se revisa que estos resultados aparezcan y en este orden.</p>`;
+}
+
+/* ===================== COMPILACIÓN ===================== */
+async function conTiempo(url, op, ms){ const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); try { return await fetch(url, { ...op, signal:c.signal }); } finally { clearTimeout(t); } }
+const limpiar = s => (s || "").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").replace(/(<source>|prog\.cc|\/app\/example\.cpp|example\.cpp):(\d+):(\d+):/g, "Línea $2, columna $3:").replace(/(<source>|prog\.cc):/g, "");
+async function compilarGodbolt(codigo, stdin){
+  const r = await conTiempo("https://godbolt.org/api/compiler/g132/compile", { method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" },
+    body:JSON.stringify({ source:codigo, compiler:"g132", lang:"c++", allowStoreCodeDebug:false,
+      options:{ userArguments:"-std=c++17 -O1 -fdiagnostics-color=never", executeParameters:{ args:[], stdin }, compilerOptions:{ executorRequest:true, skipAsm:true }, filters:{ execute:true }, tools:[], libraries:[] } }) }, 30000);
+  if (!r.ok) throw new Error("Compiler Explorer respondió " + r.status);
+  const j = await r.json(); const t = a => (a || []).map(x => x.text).join("\n"); const b = j.buildResult || {};
+  if ((b.code && b.code !== 0) || j.didExecute === false && (t(b.stderr) || t(j.stderr)).includes("error"))
+    return { compilo:false, errores:limpiar(t(b.stderr) || t(b.stdout) || t(j.stderr)), servicio:"Compiler Explorer" };
+  return { compilo:true, salida:t(j.stdout), errEjec:limpiar(t(j.stderr)), codigo:j.code, agotado:!!j.timedOut, servicio:"Compiler Explorer" };
+}
+async function compilarWandbox(codigo, stdin){
+  const r = await conTiempo("https://wandbox.org/api/compile.json", { method:"POST", headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ code:codigo, compiler:"gcc-13.2.0", options:"warning", "compiler-option-raw":"-std=c++17", stdin, save:false }) }, 30000);
+  if (!r.ok) throw new Error("Wandbox respondió " + r.status);
+  const j = await r.json();
+  if (j.status !== "0" && j.compiler_error && /error/i.test(j.compiler_error) && !("program_output" in j)) return { compilo:false, errores:limpiar(j.compiler_error), servicio:"Wandbox" };
+  return { compilo:true, salida:j.program_output || "", errEjec:limpiar(j.program_error || ""), codigo:Number(j.status), agotado:j.signal === "Killed", servicio:"Wandbox" };
+}
+async function compilar(codigo, stdin){
+  const err = [];
+  for (const f of [compilarGodbolt, compilarWandbox]){ try { return await f(codigo, stdin); } catch(e){ err.push(e.name === "AbortError" ? "tiempo de espera agotado" : e.message); } }
+  throw new Error(err.join(" · "));
+}
+/* Revisión flexible: cada resultado esperado debe aparecer en la salida, en orden, sin importar los mensajes extra del estudiante. */
+const colapsa = s => String(s || "").replace(/\r/g, "").replace(/\s+/g, " ").trim();
+function revisar(salida, esperadas){
+  const t = colapsa(salida); let pos = 0; const marcas = [];
+  for (const e of esperadas){
+    const e2 = colapsa(e); let i = t.indexOf(e2, pos);
+    while (i >= 0){
+      const fin = i + e2.length, sig = t[fin] || "";
+      const pegado = /[A-Za-z0-9]$/.test(e2) && (/[A-Za-z0-9]/.test(sig) || (sig === "." && /\d/.test(t[fin + 1] || "")));
+      if (!pegado) break; i = t.indexOf(e2, i + 1);
+    }
+    if (i >= 0){ marcas.push(true); pos = i + e2.length; } else marcas.push(false);
+  }
+  return { marcas, ok:marcas.filter(Boolean).length, total:esperadas.length };
+}
+
+let ultima = 0;
+async function ejecutar(probar){
+  const e = EJ(); const espera = 3000 - (Date.now() - ultima);
+  if (espera > 0){ toast(`Espere ${Math.ceil(espera/1000)} s antes de volver a ejecutar.`); return; }
+  ultima = Date.now();
+  S.codigo_fuente = codigoActual(); guardar();
+  const stdin = probar ? e.ejemplo.entrada : $("entrada").value, con = $("consola");
+  con.innerHTML = '<span class="i">Compilando y ejecutando…</span>'; $("btnEjecutar").disabled = $("btnProbar").disabled = true;
+  try {
+    const r = await compilar(S.codigo_fuente, stdin);
+    $("txtServicio").textContent = "Compilado con " + r.servicio;
+    let html;
+    if (!r.compilo){ html = `<span class="e">Error de compilación</span>\n\n${esc(r.errores)}`; S.ultima = { tipo:"no compila", salida:r.errores, fecha:ahora().toISOString() }; }
+    else {
+      html = (probar ? '<span class="i">Ejecutado con la entrada del ejemplo</span>\n\n' : "") + (r.salida ? esc(r.salida) : '<span class="w">(el programa no imprimió nada)</span>');
+      if (r.errEjec) html += `\n<span class="e">${esc(r.errEjec)}</span>`;
+      if (r.agotado) html += '\n<span class="e">El programa tardó demasiado y fue detenido. Revise si hay un ciclo infinito o si espera más datos de los que hay en la entrada.</span>';
+      else if (r.codigo && r.codigo !== 0) html += `\n<span class="w">El programa terminó con código ${r.codigo}.</span>`;
+      if (probar){
+        const v = revisar(r.salida, e.ejemplo.salida);
+        html += `\n\n<span class="${v.ok === v.total ? "o" : "e"}">Resultados encontrados: ${v.ok} de ${v.total}</span><ul class="chequeo">${e.ejemplo.salida.map((l, k) => `<li class="${v.marcas[k] ? "o" : "e"}">${v.marcas[k] ? "[bien]" : "[falta]"} ${esc(l)}</li>`).join("")}</ul>`;
+        if (v.ok < v.total) html += '<span class="i">Si un resultado sí aparece pero está marcado como faltante, revise que esté en el orden indicado y con el formato exacto (decimales, mayúsculas, espacios).</span>';
+      }
+      S.ultima = { tipo:probar ? "ejemplo" : "entrada propia", salida:r.salida, fecha:ahora().toISOString() };
+    }
+    con.innerHTML = html; guardar();
+  } catch(err){ con.innerHTML = `<span class="e">No se pudo conectar con el compilador en línea.</span>\n<span class="i">Revise la conexión y vuelva a intentarlo.\nDetalle: ${esc(err.message)}</span>`; }
+  $("btnEjecutar").disabled = $("btnProbar").disabled = false;
+}
+$("btnEjecutar").addEventListener("click", () => ejecutar(false));
+$("btnProbar").addEventListener("click", () => ejecutar(true));
+$("entrada").addEventListener("input", () => { if (S){ S.entrada = $("entrada").value; clearTimeout(gT); gT = setTimeout(guardar, 600); } });
+
+/* ===================== VIGILANCIA ===================== */
+let vigilando = false, fuera = false, fueraDesde = 0, pausa = false;
+const velo = on => $("velo").classList.toggle("oculto", !on);
+function salir(tipo){
+  if (!vigilando || fuera || pausa || !S || S.estado !== "activo") return;
+  fuera = true; fueraDesde = Date.now(); registrar("salida", tipo);
+  if (S.salidas >= CONFIG.maxSalidas) finalizar(`Finalizada automáticamente: alcanzó ${CONFIG.maxSalidas} salidas de la ventana.`);
+}
+function volver(){
+  velo(false); if (!fuera || !S) return; fuera = false;
+  const u = [...S.incidentes].reverse().find(i => i.clase === "salida");
+  if (u && u.segundos == null){ u.segundos = Math.round((Date.now() - fueraDesde)/1000); guardar(); }
+  if (S.estado === "activo") modal({ titulo:"Salida registrada", html:`<p>Salió de la ventana durante ${u ? u.segundos : 0} segundos. Se descontaron ${CONFIG.penalizaciones.salida.valor.toFixed(1)} puntos. Lleva <b>${S.salidas} de ${CONFIG.maxSalidas}</b> salidas; al llegar al límite la recuperación se finaliza y se envía sola.</p>`, botones:[{ txt:"Entendido", clase:"b-neg" }] });
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden){ if (vigilando && S && S.estado === "activo") velo(true); salir("Cambió de pestaña, minimizó o cubrió la ventana"); } else if (document.hasFocus()) volver(); });
+window.addEventListener("blur", () => { if (!vigilando || !S || S.estado !== "activo") return; if (!pausa) velo(true);
+  setTimeout(() => { if (!document.hasFocus()) salir("La ventana perdió el foco (otra ventana, aplicación del computador o navegador)"); else velo(false); }, 250); });
+window.addEventListener("focus", volver);
+async function pantallaCompleta(){ const el = document.documentElement; try { if (!document.fullscreenElement){ pausa = true; await (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } } catch(e){} finally { setTimeout(() => pausa = false, 700); } }
+document.addEventListener("fullscreenchange", () => { if (!S || S.estado !== "activo" || !vigilando) return;
+  if (!document.fullscreenElement){ registrar("pantalla"); $("capaFS").classList.remove("oculto"); } else $("capaFS").classList.add("oculto"); });
+$("btnVolverFS").addEventListener("click", pantallaCompleta);
+let ultCaptura = 0;
+function captura(){ if (!S || S.estado !== "activo" || Date.now() - ultCaptura < 1500) return; ultCaptura = Date.now();
+  velo(true); setTimeout(() => { if (document.hasFocus()) velo(false); }, 1500);
+  try { navigator.clipboard && navigator.clipboard.writeText(" ").catch(() => {}); } catch(e){}
+  registrar("captura"); toast("Las capturas de pantalla están bloqueadas. El intento se descontó de la nota."); }
+document.addEventListener("contextmenu", e => { if (S && S.estado === "activo") e.preventDefault(); });
+window.addEventListener("keydown", e => {
+  if (!S || S.estado !== "activo" || !vigilando) return;
+  const k = (e.key || "").toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
+  if (k === "printscreen" || (e.metaKey && e.shiftKey && ["3","4","5","s"].includes(k))){ e.preventDefault(); captura(); return; }
+  if ((ctrl && ["c","x","v","insert"].includes(k)) || (e.shiftKey && k === "insert")){ e.preventDefault(); e.stopPropagation(); bloqueoCopia(k === "v" || k === "insert" ? "Intentó pegar con el teclado" : "Intentó copiar con el teclado"); return; }
+  if (k === "f12" || k === "f5" || (ctrl && ["r","s","p","o","u","f","g","h","j","n","t","a"].includes(k)) || (ctrl && e.shiftKey && ["i","j","c","k"].includes(k))){ e.preventDefault(); e.stopPropagation(); if (k !== "a") toast("Esa combinación de teclas está bloqueada."); }
+}, true);
+window.addEventListener("keyup", e => { if ((e.key || "").toLowerCase() === "printscreen") captura(); }, true);
+window.addEventListener("beforeunload", e => { if (S && S.estado === "activo"){ e.preventDefault(); e.returnValue = ""; } });
+
+/* ===================== MODAL ===================== */
+function modal({ titulo, html, botones }){
+  pausa = true; $("mTitulo").textContent = titulo; $("mCuerpo").innerHTML = html; $("mBotones").innerHTML = "";
+  (botones || [{ txt:"Cerrar", clase:"b-neg" }]).forEach(b => { const el = document.createElement("button"); el.className = b.clase || ""; el.textContent = b.txt;
+    el.addEventListener("click", async () => { if (b.fn){ const r = await b.fn(); if (r === false) return; } cerrarModal(); }); $("mBotones").appendChild(el); });
+  $("modal").classList.remove("oculto"); const p = $("mCuerpo").querySelector("input"); (p || $("mBotones").firstChild).focus();
+  setTimeout(() => pausa = false, 400);
+}
+function cerrarModal(){ $("modal").classList.add("oculto"); }
+
+/* ===================== PDF ===================== */
+const pdfTxt = s => String(s ?? "").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/[−–—]/g, "-").replace(/√/g, "raiz").replace(/π/g, "pi").replace(/…/g, "...").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/±/g, "+/-").replace(/·/g, "*").replace(/[^\x00-\xFF\n]/g, "?");
+function pdfNuevo(){
+  if (!window.jspdf) throw new Error("No se pudo cargar el generador de PDF. Revise la conexión.");
+  const doc = new window.jspdf.jsPDF({ unit:"pt", format:"letter" }); const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 50; let y = M;
+  const salto = h => { if (y + h > H - M){ doc.addPage(); y = M; } };
+  return { doc,
+    titulo(t){ salto(30); doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.setTextColor(21,21,21); doc.splitTextToSize(pdfTxt(t), W-2*M).forEach(l => { salto(22); doc.text(l, M, y); y += 22; }); doc.setDrawColor(21,21,21); doc.setLineWidth(2); doc.line(M, y-12, W-M, y-12); y += 6; },
+    sub(t){ salto(24); doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(200,55,30); doc.text(pdfTxt(t), M, y); y += 16; },
+    texto(t, o = {}){ doc.setFont("helvetica", o.bold ? "bold" : "normal"); doc.setFontSize(o.size || 10.5); doc.setTextColor(21,21,21); doc.splitTextToSize(pdfTxt(t), W-2*M).forEach(l => { salto(14); doc.text(l, M, y); y += 14; }); y += 4; },
+    codigo(t){ doc.setFont("courier","normal"); doc.setFontSize(9.3); doc.setTextColor(21,21,21); const ls = []; pdfTxt(t).split("\n").forEach(l => doc.splitTextToSize(l === "" ? " " : l, W-2*M-16).forEach(x => ls.push(x)));
+      ls.forEach(l => { salto(12); doc.setFillColor(231,228,223); doc.rect(M, y-9, W-2*M, 12, "F"); doc.text(l, M+8, y); y += 12; }); y += 8; },
+    pagina(){ doc.addPage(); y = M; },
+    final(){ const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(110); doc.text(`${pdfTxt(CONFIG.curso)} · página ${i} de ${n}`, M, H-24); } return doc; } };
+}
+function pdfEjercicio(p, e){
+  p.sub(`Ejercicio ${e.id} · ${e.temas}`); p.titulo(e.titulo);
+  p.texto("Qué debe hacer", { bold:true }); p.texto(e.que);
+  p.texto("Clases que debe crear", { bold:true }); p.codigo(e.clases);
+  if (e.formula){ p.texto("Fórmula", { bold:true }); p.codigo(e.formula); }
+  p.texto("Datos de entrada", { bold:true }); p.texto(e.entrada_fmt);
+  p.texto("Resultados que debe mostrar", { bold:true }); p.texto(e.salida_fmt);
+  p.texto("Ejemplo explicado", { bold:true }); p.texto(e.explicacion);
+  p.texto("Entrada de ejemplo", { bold:true }); p.codigo(e.ejemplo.entrada);
+  p.texto("Resultados que deben aparecer", { bold:true }); p.codigo(e.ejemplo.salida.join("\n"));
+}
+function pdfEnunciado(){ const p = pdfNuevo(); p.texto(`${S.nombre} · código ${S.codigo}`, { bold:true }); pdfEjercicio(p, EJ()); return p.final(); }
+function pdfEntrega(){
+  const p = pdfNuevo(), e = EJ(), c = S.calificacion, fin = S.fin ? new Date(S.fin) : ahora();
+  p.titulo("Recuperación POO · Entrega"); p.texto(`Estudiante: ${S.nombre} · código ${S.codigo}`, { bold:true });
+  p.texto(`Inicio: ${fechaTxt(S.inicio)}   Fin: ${S.fin ? fechaTxt(S.fin) : "(en curso)"}   Tiempo: ${dur(fin - new Date(S.inicio))}`);
+  p.texto(`Ejercicio asignado: ${e.id}. ${e.titulo}`);
+  if (c){ p.sub(`Nota final: ${c.final.toFixed(2)} / 5.00`); p.texto(`Nota del código: ${c.base.toFixed(2)}   Descuentos: -${c.descuento.toFixed(2)}${c.pendientes ? `   (${c.pendientes} pruebas sin ejecutar por falta de conexión)` : ""}`);
+    c.pruebas.forEach((t, k) => p.texto(`Prueba ${k+1}${k === 0 ? " (ejemplo)" : " (oculta)"}: ${t.estado}${t.total ? `, ${t.ok} de ${t.total} resultados` : ""}`)); }
+  else p.texto("Aún no calificada.");
+  if (S.motivoFin) p.texto("Observación: " + S.motivoFin);
+  p.sub("Incidentes registrados");
+  if (S.incidentes.length) S.incidentes.forEach(i => p.texto(`${fechaTxt(i.fecha)} · ${i.tipo}${i.segundos != null ? ` (${i.segundos} s fuera)` : ""} · -${(CONFIG.penalizaciones[i.clase]?.valor || 0).toFixed(1)}`)); else p.texto("Ninguno.");
+  p.pagina(); p.sub("Código entregado"); p.codigo(S.codigo_fuente);
+  p.sub("Última ejecución"); p.codigo(S.ultima ? S.ultima.salida || "(sin salida)" : "(no ejecutó el programa)");
+  p.pagina(); pdfEjercicio(p, e);
+  return p.final();
+}
+const archivo = () => "Recuperacion_POO_" + (S.nombre + "_" + S.codigo).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "_");
+function bajar(doc, nombre){ pausa = true; try { doc.save(nombre); } catch(e){ toast(e.message); } setTimeout(() => pausa = false, 1500); }
+$("btnPdfEnun").addEventListener("click", () => { try { bajar(pdfEnunciado(), archivo() + "_enunciado.pdf"); } catch(e){ toast(e.message); } });
+$("btnPdfEntrega").addEventListener("click", () => { S.codigo_fuente = codigoActual(); guardar(); try { bajar(pdfEntrega(), archivo() + ".pdf"); } catch(e){ toast(e.message); } });
+$("btnPdfFinal").addEventListener("click", () => { try { bajar(pdfEntrega(), archivo() + ".pdf"); } catch(e){ toast(e.message); } });
+
+/* ===================== CALIFICACIÓN ===================== */
+async function calificar(){
+  const e = EJ(), casos = [e.ejemplo, ...e.ocultos], pruebas = []; let pend = 0, noCompila = false;
+  const vacio = !S.codigo_fuente || S.codigo_fuente.replace(/\s/g, "") === PLANTILLA.replace(/\s/g, "");
+  $("finProg").classList.remove("oculto");
+  for (let k = 0; k < casos.length; k++){
+    $("finProgTxt").textContent = `Calificando: prueba ${k+1} de ${casos.length}…`;
+    const c = casos[k];
+    if (vacio) pruebas.push({ estado:"sin código", ok:0, total:c.salida.length });
+    else if (noCompila) pruebas.push({ estado:"no compila", ok:0, total:c.salida.length });
+    else {
+      let r = null;
+      for (let i = 0; i < 2 && !r; i++){ try { r = await compilar(S.codigo_fuente, c.entrada); } catch(err){ await new Promise(z => setTimeout(z, 1500)); } }
+      if (!r){ pend++; pruebas.push({ estado:"sin ejecutar (sin conexión)", ok:0, total:c.salida.length }); }
+      else if (!r.compilo){ noCompila = true; pruebas.push({ estado:"no compila", ok:0, total:c.salida.length }); }
+      else { const v = revisar(r.salida, c.salida); pruebas.push({ estado: v.ok === v.total ? "correcta" : r.agotado ? "tiempo agotado" : "incompleta", ok:v.ok, total:v.total }); }
+      await new Promise(z => setTimeout(z, 600));
+    }
+    $("finProgBar").style.width = ((k + 1) * 100 / casos.length) + "%";
+  }
+  const base = pruebas.reduce((s, t) => s + t.ok / t.total, 0) / pruebas.length * 5, d = descuento();
+  S.calificacion = { base, descuento:d, final:Math.max(0, Math.round((base - d) * 100) / 100), pruebas, pendientes:pend, fecha:ahora().toISOString() };
+  guardar(); $("finProg").classList.add("oculto");
+}
+
+/* ===================== CORREO ===================== */
+function datosCorreo(){
+  const c = S.calificacion, e = EJ(), fin = new Date(S.fin);
+  return { _subject:`Recuperación POO · ${S.nombre} · Nota ${c ? c.final.toFixed(2) : "pendiente"}`, _template:"box", _captcha:"false",
+    "Estudiante":S.nombre, "Código":S.codigo, "NOTA FINAL":c ? `${c.final.toFixed(2)} / 5.00` : "pendiente",
+    "Nota del código":c ? c.base.toFixed(2) : "-", "Descuentos":c ? "-" + c.descuento.toFixed(2) : "-",
+    "Pruebas":c ? c.pruebas.map((t, k) => `Prueba ${k+1}${k ? " (oculta)" : " (ejemplo)"}: ${t.estado}, ${t.ok} de ${t.total} resultados`).join("\n") : "-",
+    "Ejercicio":`${e.id}. ${e.titulo}`, "Inicio":fechaTxt(S.inicio), "Fin":fechaTxt(S.fin), "Tiempo empleado":dur(fin - new Date(S.inicio)),
+    "Salidas de la ventana":`${S.salidas} de ${CONFIG.maxSalidas}`, "Observación":S.motivoFin || "Finalizada por el estudiante",
+    "Incidentes":S.incidentes.length ? S.incidentes.map(i => `${fechaTxt(i.fecha)} · ${i.tipo}${i.segundos != null ? ` (${i.segundos} s)` : ""} · -${(CONFIG.penalizaciones[i.clase]?.valor || 0).toFixed(1)}`).join("\n") : "Ninguno",
+    "Código fuente":S.codigo_fuente };
+}
+async function enviarCorreo(datos, pdf){
+  const url = "https://formsubmit.co/ajax/" + encodeURIComponent(CONFIG.correoDocente);
+  const leer = async r => { let j = {}; try { j = await r.json(); } catch(e){} if (!r.ok || String(j.success) !== "true") throw new Error(j.message || ("El servicio de correo respondió " + r.status)); return j; };
+  if (pdf){ try { const fd = new FormData(); Object.entries(datos).forEach(([k, v]) => fd.append(k, v)); fd.append("attachment", pdf, archivo() + ".pdf");
+      return await leer(await conTiempo(url, { method:"POST", headers:{ "Accept":"application/json" }, body:fd }, 45000)); } catch(e){} }
+  return leer(await conTiempo(url, { method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" }, body:JSON.stringify(datos) }, 30000));
+}
+async function intentarEnvio(){
+  const est = $("finEstado"); est.className = "aviso"; est.textContent = "Enviando al correo de la docente…"; $("btnReenviar").classList.add("oculto");
+  try { let pdf = null; try { pdf = pdfEntrega().output("blob"); } catch(e){}
+    await enviarCorreo(datosCorreo(), pdf); S.envio = { ok:true, fecha:ahora().toISOString() }; guardar();
+    est.className = "aviso ok"; est.textContent = `Enviada a ${CONFIG.correoDocente} el ${fechaTxt(S.envio.fecha)}`;
+  } catch(e){ S.envio = { ok:false, mensaje:e.message }; guardar();
+    est.className = "aviso err"; est.innerHTML = `No se pudo enviar el correo: ${esc(e.name === "AbortError" ? "tiempo de espera agotado" : e.message)}<br>Su trabajo está guardado en este equipo. Pulse Reintentar envío. Si sigue fallando, descargue el PDF y entrégueselo a la docente.`;
+    $("btnReenviar").classList.remove("oculto"); }
+}
+$("btnReenviar").addEventListener("click", async () => { if (!S.calificacion || S.calificacion.pendientes) await calificar(); pintarFinal(); intentarEnvio(); });
+
+/* ===================== PANTALLAS ===================== */
+function entrarExamen(){
+  $("ingreso").classList.add("oculto"); $("final").classList.add("oculto"); $("examen").classList.remove("oculto"); document.body.classList.add("activo");
+  $("hoja").innerHTML = htmlHoja(EJ()); $("entrada").value = S.entrada ?? EJ().ejemplo.entrada;
+  if (!cm && !respaldo) crearEditor(); setTimeout(() => cm && cm.refresh(), 0);
+  $("consola").innerHTML = '<span class="i">Escriba su programa y pulse Compilar y ejecutar.</span>';
+  pintarCab(); clearInterval(relojT); relojT = setInterval(() => { const t = $("datoTiempo"); if (t) t.textContent = dur(Date.now() - new Date(S.inicio)); }, 1000);
+  vigilando = true;
+}
+function pintarFinal(){
+  document.body.classList.remove("activo"); $("ingreso").classList.add("oculto"); $("examen").classList.add("oculto"); $("final").classList.remove("oculto");
+  pintarCab(); const c = S.calificacion, e = EJ();
+  $("finTitulo").textContent = S.motivoFin.startsWith("Finalizada automáticamente") ? "Recuperación finalizada automáticamente" : "Recuperación finalizada";
+  if (c && CONFIG.mostrarNotaAlEstudiante){ $("finNota").innerHTML = `<span class="grande">${c.final.toFixed(2)}</span>`; $("finDe").textContent = "de 5.00"; }
+  else if (c){ $("finNota").innerHTML = '<span class="grande" style="font-size:40px">Calificada</span>'; $("finDe").textContent = "La nota se envió a la docente"; }
+  $("finTabla").innerHTML = `<tr><td>Ejercicio ${e.id}. ${esc(e.titulo)}</td><td class="n"></td></tr>`
+    + (c ? c.pruebas.map((t, k) => `<tr><td>Prueba ${k+1}${k ? " (oculta)" : " (ejemplo)"}: ${esc(t.estado)}</td><td class="n">${t.ok} de ${t.total}</td></tr>`).join("")
+      + `<tr><td>Nota del código</td><td class="n">${c.base.toFixed(2)}</td></tr><tr><td>Descuentos (${S.incidentes.length} incidentes, ${S.salidas} salidas)</td><td class="n">−${c.descuento.toFixed(2)}</td></tr>` : "");
+  $("finObs").textContent = S.motivoFin || "";
+}
+async function finalizar(motivo){
+  if (S.estado !== "activo") return;
+  S.codigo_fuente = codigoActual(); S.estado = "finalizado"; S.fin = ahora().toISOString(); S.motivoFin = motivo || ""; guardar();
+  vigilando = false; velo(false); clearInterval(relojT); cerrarModal(); $("capaFS").classList.add("oculto");
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  pintarFinal(); await calificar(); pintarFinal(); intentarEnvio();
+}
+$("btnFinalizar").addEventListener("click", () => {
+  S.codigo_fuente = codigoActual(); guardar();
+  modal({ titulo:"Finalizar la recuperación", html:"<p>Después de finalizar no podrá modificar su código. Se probará con el ejemplo y con 3 casos ocultos, se calculará la nota y se enviará a la docente.</p>",
+    botones:[{ txt:"Finalizar y enviar", clase:"b-lad", fn:() => { finalizar(""); } }, { txt:"Seguir trabajando" }] });
+});
+
+/* ===================== INGRESO ===================== */
+$("txtCurso").textContent = CONFIG.curso; $("txtMax").textContent = CONFIG.maxSalidas;
+$("tablaPen").innerHTML = '<thead><tr><th>Descuentos sobre la nota (escala 0 a 5)</th><th>Valor</th></tr></thead><tbody>' + Object.values(CONFIG.penalizaciones).map(p => `<tr><td>${esc(p.texto)}</td><td>−${p.valor.toFixed(1)}</td></tr>`).join("") + "</tbody>";
+$("btnIniciar").addEventListener("click", () => {
+  const m = $("msgIngreso"); m.classList.add("oculto");
+  const nom = $("inNombre").value.trim().replace(/\s+/g, " "), cod = limpiaCodigo($("inCodigo").value);
+  const err = !nom || nom.split(" ").length < 2 ? "Escriba su nombre completo (nombres y apellidos)." : cod.length < 4 ? "Escriba su código estudiantil (solo números)." : !$("chkReglas").checked ? "Debe aceptar las reglas." : "";
+  if (err){ m.textContent = err; m.classList.remove("oculto"); return; }
+  avisoCierre(nom.toUpperCase(), cod);
+});
+function avisoCierre(nom, cod){
+  let seg = 10;
+  modal({ titulo:"Antes de iniciar: cierre todo", html:`
+    <div class="aviso warn"><b>Atención.</b> Desde que inicie, cada salida de esta ventana descuenta ${CONFIG.penalizaciones.salida.valor.toFixed(1)} de la nota y a las ${CONFIG.maxSalidas} salidas la recuperación se envía sola.</div>
+    <p>Cierre ahora todo lo que tenga abierto, menos esta pestaña:</p>
+    <ul class="lista"><li>Las demás pestañas y ventanas de este navegador</li><li>Otros navegadores (Chrome, Edge, Firefox, Opera)</li><li>WhatsApp, Teams, Discord, correo y redes sociales</li><li>Editores y compiladores (Visual Studio Code, Dev-C++, Code::Blocks), Word y bloc de notas</li><li>Asistentes de inteligencia artificial y herramientas de captura de pantalla</li></ul>
+    <p class="nota">Las notificaciones de otras aplicaciones también pueden sacar el foco de la ventana: ciérrelas o active el modo No molestar.</p>
+    <label class="check"><input type="checkbox" id="chkCerre"> <span>Ya cerré todas las ventanas y aplicaciones.</span></label>
+    <p id="msgCerre" class="aviso err oculto">Marque la casilla para confirmar que cerró todo.</p>`,
+    botones:[{ txt:`Iniciar (${seg})`, clase:"b-neg", fn:async () => {
+        if (!$("chkCerre").checked){ $("msgCerre").classList.remove("oculto"); return false; }
+        cerrarModal(); await pantallaCompleta();
+        const e = ejercicioDe(cod);
+        S = { nombre:nom, codigo:cod, ejercicio:e.id, inicio:ahora().toISOString(), fin:null, codigo_fuente:PLANTILLA, entrada:e.ejemplo.entrada, ultima:null,
+              incidentes:[], salidas:0, estado:"activo", motivoFin:"", calificacion:null, envio:null };
+        guardar(); entrarExamen(); return false; } }, { txt:"Cancelar" }] });
+  const b = $("mBotones").firstChild; b.disabled = true;
+  const t = setInterval(() => { seg--; if (seg <= 0){ clearInterval(t); b.disabled = false; b.textContent = "Ya cerré todo, iniciar"; } else b.textContent = `Iniciar (${seg})`; }, 1000);
+}
+
+/* ===================== PANEL DOCENTE ===================== */
+function pedirPin(ok){
+  modal({ titulo:"Acceso docente", html:'<label for="pin">PIN</label><input type="password" id="pin" autocomplete="off"><p id="pinMsg" class="aviso err oculto">PIN incorrecto.</p>',
+    botones:[{ txt:"Entrar", clase:"b-neg", fn:() => { if ($("pin").value === CONFIG.pinDocente){ setTimeout(ok, 50); return true; } $("pinMsg").classList.remove("oculto"); return false; } }, { txt:"Cancelar" }] });
+}
+function pdfBanco(){ const p = pdfNuevo(); p.titulo("Banco de 20 ejercicios de POO con casos de prueba"); p.texto(CONFIG.curso);
+  EJERCICIOS.forEach((e, k) => { if (k) p.pagina(); pdfEjercicio(p, e); e.ocultos.forEach((c, j) => { p.texto(`Caso oculto ${j+1} · entrada`, { bold:true }); p.codigo(c.entrada); p.texto(`Caso oculto ${j+1} · resultados`, { bold:true }); p.codigo(c.salida.join("\n")); }); });
+  return p.final(); }
+function panel(){
+  modal({ titulo:"Panel docente", html:`
+    <div><label for="pCod">Consultar qué ejercicio le corresponde a un código</label><input type="text" id="pCod" inputmode="numeric"></div>
+    <p class="aviso" id="pRes">Escriba un código para ver su ejercicio.</p>
+    <div class="fila-b"><button id="dBanco">Banco de 20 ejercicios en PDF</button><button class="b-neg" id="dPrueba">Enviar correo de prueba</button><button class="b-lad" id="dReset">Borrar la recuperación guardada en este equipo</button></div>
+    <p class="aviso" id="dMsg">Antes de la clase envíe el correo de prueba: la primera vez, FormSubmit manda a ${esc(CONFIG.correoDocente)} un mensaje con el botón Activate Form. Hasta que se pulse, las entregas no llegan.</p>`,
+    botones:[{ txt:"Cerrar", clase:"b-neg" }] });
+  $("pCod").oninput = () => { const c = limpiaCodigo($("pCod").value); const e = c.length >= 4 ? ejercicioDe(c) : null; $("pRes").textContent = e ? `Código ${c}: ejercicio ${e.id}. ${e.titulo}` : "Escriba un código para ver su ejercicio."; };
+  $("dBanco").onclick = () => bajar(pdfBanco(), "Banco_20_ejercicios_POO.pdf");
+  $("dPrueba").onclick = async () => { const m = $("dMsg"); m.className = "aviso"; m.textContent = "Enviando correo de prueba…";
+    try { await enviarCorreo({ _subject:"Prueba · Recuperación POO", _template:"box", _captcha:"false", "Mensaje":"Correo de prueba de la recuperación de POO. Si lo recibió, el envío automático funciona.", "Fecha":fechaTxt(ahora()) });
+      m.className = "aviso ok"; m.textContent = "Correo de prueba enviado. Revise la bandeja de entrada y la de spam."; } catch(e){ m.className = "aviso warn"; m.textContent = "Respuesta del servicio: " + e.message; } };
+  $("dReset").onclick = () => { try { localStorage.removeItem(CLAVE); } catch(e){} S = null; location.reload(); };
+}
+$("btnDocente").addEventListener("click", () => pedirPin(panel));
+$("btnNuevo").addEventListener("click", () => pedirPin(() => { try { localStorage.removeItem(CLAVE); } catch(e){} S = null; location.reload(); }));
+
+/* ===================== ARRANQUE ===================== */
+(async () => {
+  if (!(await comprobarPestana())){ $("bloqueo").classList.remove("oculto"); $("ingreso").classList.add("oculto"); return; }
+  const g = cargar();
+  if (g && g.nombre){
+    S = g;
+    if (S.estado === "activo"){ registrar("pantalla", "Recargó o volvió a abrir la página"); entrarExamen(); $("capaFS").classList.remove("oculto"); }
+    else { pintarFinal(); if (!S.calificacion){ await calificar(); pintarFinal(); }
+      if (S.envio && S.envio.ok){ const est = $("finEstado"); est.className = "aviso ok"; est.textContent = `Enviada a ${CONFIG.correoDocente} el ${fechaTxt(S.envio.fecha)}`; } else intentarEnvio(); }
+  }
+})();
+}
+</script>
+</body>
+</html>
